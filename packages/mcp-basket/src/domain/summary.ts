@@ -31,8 +31,17 @@ export type BasketSummary = {
   items: BasketSummaryItem[];
 };
 
-function moneyFrom(value: unknown): Money | undefined {
-  return value != null && typeof value === "object" ? (value as Money) : undefined;
+function moneyFrom(value: unknown, currency?: unknown): Money | undefined {
+  if (value != null && typeof value === "object") {
+    return value as Money;
+  }
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return {
+      amount: value,
+      currency: typeof currency === "string" ? currency : undefined,
+    };
+  }
+  return undefined;
 }
 
 function stringField(value: unknown): string | undefined {
@@ -40,7 +49,8 @@ function stringField(value: unknown): string | undefined {
 }
 
 export function compactBasketItem(item: CartItem): BasketSummaryItem {
-  const price = moneyFrom(item.product.price?.current || item.product.price?.totalEstimate);
+  const currency = item.product.price?.currency;
+  const price = moneyFrom(item.product.price?.current, currency) || moneyFrom(item.product.price?.totalEstimate, currency);
   return {
     id: item.id,
     status: item.status,
@@ -67,12 +77,13 @@ export function summarizeBasket(basket: Basket): BasketSummary {
   }, {});
 
   const totalsByCurrency = basket.items.reduce<Record<string, number>>((totals, item) => {
-    const money = moneyFrom(item.product.price?.totalEstimate || item.product.price?.current);
+    const priceCurrency = item.product.price?.currency;
+    const money = moneyFrom(item.product.price?.totalEstimate, priceCurrency) || moneyFrom(item.product.price?.current, priceCurrency);
     if (money?.amount == null) {
       return totals;
     }
 
-    const currency = money.currency || basket.context.currency || "USD";
+    const currency = stringField(money.currency) || basket.context.currency || "USD";
     totals[currency] = (totals[currency] || 0) + money.amount * item.quantity;
     return totals;
   }, {});

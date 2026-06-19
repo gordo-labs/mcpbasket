@@ -41,3 +41,25 @@ test("summarizeBasket aggregates quantities, currencies, and checkout readiness"
   assert.deepEqual(summary.totalsByCurrency, { EUR: 219 });
   assert.equal(summary.items[0].locator, "store:quiet-keyboard");
 });
+
+test("summarizeBasket supports scalar merchant prices", () => {
+  const basket = createEmptyBasket(() => "2026-06-19T00:00:00.000Z");
+  basket.context.currency = "EUR";
+  basket.items = [
+    normalizeCartItem(
+      {
+        id: "scalar-price-item",
+        product: {
+          title: "Merchant price format",
+          price: { current: 69.99, currency: "EUR" },
+        },
+      },
+      { clock: () => "2026-06-19T00:00:00.000Z" },
+    ),
+  ];
+
+  const summary = summarizeBasket(basket);
+
+  assert.deepEqual(summary.totalsByCurrency, { EUR: 69.99 });
+  assert.deepEqual(summary.items[0].price, { amount: 69.99, currency: "EUR" });
+});

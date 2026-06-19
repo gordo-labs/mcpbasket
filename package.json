@@ -2,7 +2,7 @@
   "name": "mcpbasket",
   "version": "0.1.0",
   "private": true,
-  "description": "Installable agent basket MCP, skill, and hosted preview web app.",
+  "description": "Installable agent basket MCP, skill, and local viewer.",
   "workspaces": ["packages/*"],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
