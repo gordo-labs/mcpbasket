@@ -50,6 +50,8 @@ MCPBASKET_STORE_PATH=.mcpbasket/basket.json
    - Evidence: query, reason it matches, sources, observed timestamp, confidence.
    - Checkout: `locator`, `supported`, `readiness`; set `missing_locator` when unknown.
 
+   For every online product, save the direct product page in `product.urls.product`. Also save it in `product.identifiers.sourceUrl` when known. Save the primary product image in `product.urls.image` or `product.images[0].url`; MCPBasket mirrors these compatible fields when one is provided. Do not substitute a search results link, merchant homepage, or unrelated image. If the product page or image cannot be observed, record that gap in evidence and keep the candidate in `needs_review`.
+
 4. Use `basket-list-products` after meaningful updates and report the local `viewerUrl` when the user is on the same machine as the agent.
    - The current MCP does not create a public basket URL.
    - Do not expose the local HTTP API or invent a remote sharing URL.

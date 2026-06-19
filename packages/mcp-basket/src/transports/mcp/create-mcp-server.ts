@@ -59,10 +59,10 @@ export function createMcpBasketServer(runtime: BasketRuntime): McpServer {
 
   registerTool(
     "basket-upsert-product",
-    "Add or update a product candidate in the neutral pre-checkout basket",
+    "Add or update a product candidate in the neutral pre-checkout basket. Capture its direct product URL and primary image when available.",
     {
       item: CartItemInputSchema.describe(
-        "Universal product candidate with product, price, merchant, evidence, and checkout fields.",
+        "Universal product candidate with product, price, merchant, direct source URL, product image, evidence, and checkout fields.",
       ),
     },
     async (input) => {

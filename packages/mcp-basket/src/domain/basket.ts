@@ -46,6 +46,45 @@ export function mergeBasketContext(
   return resetMissingFields ? nextContext : { ...current, ...nextContext };
 }
 
+function isHttpUrl(value: unknown): value is string {
+  if (typeof value !== "string") {
+    return false;
+  }
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:";
+  } catch {
+    return false;
+  }
+}
+
+function normalizeProductMedia(product: CartItemInput["product"]): CartItemInput["product"] {
+  const urls = { ...product.urls };
+  const identifiers = { ...product.identifiers };
+  const images = [...(product.images || [])];
+  const sourceUrl = urls.product || urls.canonical || identifiers.sourceUrl || identifiers.canonicalUrl;
+
+  if (isHttpUrl(sourceUrl)) {
+    urls.product ||= sourceUrl;
+    identifiers.sourceUrl ||= sourceUrl;
+  }
+
+  const imageUrl = urls.image || images[0]?.url;
+  if (isHttpUrl(imageUrl)) {
+    urls.image ||= imageUrl;
+    if (!images.some((image) => image.url === imageUrl)) {
+      images.unshift({ url: imageUrl, type: "image" });
+    }
+  }
+
+  return {
+    ...product,
+    ...(Object.keys(urls).length > 0 ? { urls } : {}),
+    ...(Object.keys(identifiers).length > 0 ? { identifiers } : {}),
+    ...(images.length > 0 ? { images } : {}),
+  };
+}
+
 function normalizeCheckout(input: CartItemInput, existing?: CartItem): CheckoutState {
   const locator = input.checkout?.locator || input.product.identifiers?.productLocator || existing?.checkout?.locator;
 
@@ -77,7 +116,7 @@ export function normalizeCartItem(
     id: parsed.id || existing?.id || (options.idGenerator || uuidGenerator)(),
     status: parsed.status || existing?.status || "candidate",
     quantity: parsed.quantity || existing?.quantity || 1,
-    product: parsed.product,
+    product: normalizeProductMedia(parsed.product),
     checkout: normalizeCheckout(parsed, existing),
     createdAt,
     updatedAt: clock(),

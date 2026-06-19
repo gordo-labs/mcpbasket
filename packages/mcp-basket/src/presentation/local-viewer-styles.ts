@@ -310,7 +310,7 @@ export const LOCAL_VIEWER_STYLES = String.raw`
   .candidate-list { display: grid; gap: 10px; padding-top: 14px; }
   .candidate {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 126px;
+    grid-template-columns: 74px minmax(0, 1fr) 126px;
     min-width: 0;
     border: 1px solid var(--line);
     border-radius: 7px;
@@ -321,9 +321,7 @@ export const LOCAL_VIEWER_STYLES = String.raw`
   .candidate:hover { border-color: #bbc4ce; box-shadow: var(--shadow); }
   .candidate.is-selected { border-color: var(--teal); box-shadow: 0 0 0 1px var(--teal), var(--shadow); }
   .candidate-select {
-    display: grid;
-    grid-template-columns: 74px minmax(0, 1fr);
-    gap: 13px;
+    display: block;
     min-width: 0;
     padding: 13px;
     border: 0;
@@ -337,6 +335,7 @@ export const LOCAL_VIEWER_STYLES = String.raw`
     place-items: center;
     width: 74px;
     height: 86px;
+    margin: 13px 0 13px 13px;
     overflow: hidden;
     border: 1px solid #d7dde4;
     border-radius: 5px;
@@ -345,6 +344,8 @@ export const LOCAL_VIEWER_STYLES = String.raw`
     font-size: 14px;
     font-weight: 800;
   }
+  .source-image-link { color: inherit; text-decoration: none; }
+  .source-image-link:hover { border-color: var(--teal); box-shadow: 0 0 0 2px var(--teal-soft); }
   .candidate-visual img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .candidate-main { min-width: 0; align-self: center; }
   .candidate-main h3 {
@@ -523,9 +524,9 @@ export const LOCAL_VIEWER_STYLES = String.raw`
     .filter-tabs { width: 100%; flex-wrap: wrap; overflow: visible; padding-bottom: 1px; }
     .sort-control { width: 100%; justify-content: space-between; }
     .sort-control select { min-width: 178px; }
-    .candidate { grid-template-columns: minmax(0, 1fr) 96px; }
-    .candidate-select { grid-template-columns: 58px minmax(0, 1fr); gap: 10px; padding: 11px; }
-    .candidate-visual { width: 58px; height: 68px; }
+    .candidate { grid-template-columns: 58px minmax(0, 1fr) 96px; }
+    .candidate-select { padding: 11px; }
+    .candidate-visual { width: 58px; height: 68px; margin: 11px 0 11px 11px; }
     .candidate-side { padding: 12px 10px 11px 0; }
     .candidate-price { font-size: 14px; }
     .review-top { align-items: flex-start; flex-direction: column; }

@@ -27,6 +27,10 @@ test("viewer HTTP API validates input and persists a candidate", async () => {
           product: {
             title: "Travel mug",
             price: { current: { amount: 24, currency: "EUR" } },
+            urls: {
+              product: "https://example.com/products/travel-mug",
+              image: "https://example.com/images/travel-mug.jpg",
+            },
           },
         }),
       });
@@ -37,6 +41,13 @@ test("viewer HTTP API validates input and persists a candidate", async () => {
       const basket = await basketResponse.json();
       assert.equal(basket.itemCount, 1);
       assert.deepEqual(basket.totalsByCurrency, { EUR: 24 });
+      assert.equal(basket.items[0].url, "https://example.com/products/travel-mug");
+      assert.equal(basket.items[0].image, "https://example.com/images/travel-mug.jpg");
+
+      const rawBasketResponse = await fetch(`${baseUrl}/api/basket/raw`);
+      const rawBasket = await rawBasketResponse.json();
+      assert.equal(rawBasket.items[0].product.identifiers.sourceUrl, "https://example.com/products/travel-mug");
+      assert.equal(rawBasket.items[0].product.images[0].url, "https://example.com/images/travel-mug.jpg");
 
       const invalidJson = await fetch(`${baseUrl}/api/items`, {
         method: "POST",

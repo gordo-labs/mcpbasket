@@ -240,14 +240,17 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
       var imageMarkup = image
         ? '<img src="' + escapeHtml(image) + '" alt="' + escapeHtml(displayText(product.title, "Product")) + '">'
         : escapeHtml(initials(item));
+      var visualMarkup = source
+        ? '<a class="candidate-visual source-image-link" href="' + escapeHtml(source) + '" target="_blank" rel="noreferrer" aria-label="Open product page for ' + escapeHtml(displayText(product.title, "product")) + '">' + imageMarkup + '</a>'
+        : '<div class="candidate-visual">' + imageMarkup + '</div>';
       var sourceMarkup = source
         ? '<a class="source-link" href="' + escapeHtml(source) + '" target="_blank" rel="noreferrer">View source &#8599;</a>'
         : '<span class="source-link">No source</span>';
       var selected = item.id === state.selectedId ? " is-selected" : "";
       return [
         '<article class="candidate' + selected + '" data-id="' + escapeHtml(item.id) + '">',
+          visualMarkup,
           '<button class="candidate-select" type="button" data-action="select" data-id="' + escapeHtml(item.id) + '" aria-label="Review ' + escapeHtml(displayText(product.title, "product")) + '">',
-            '<span class="candidate-visual">' + imageMarkup + '</span>',
             '<span class="candidate-main">',
               '<h3>' + escapeHtml(displayText(product.title, "Untitled product")) + '</h3>',
               '<span class="candidate-meta">' + escapeHtml(merchantName(item)) + (product.brand ? ' &middot; ' + escapeHtml(product.brand) : "") + '</span>',

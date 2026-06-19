@@ -14,6 +14,13 @@ Use this map when filling `basket-upsert-product.item`.
 
 ## Product Snapshot
 
+### Required Capture For Online Candidates
+
+- Save the direct product page in `urls.product`; mirror it in `identifiers.sourceUrl` when available.
+- Save the primary product image in `urls.image` or `images[0].url` with descriptive `alt` text when available.
+- Keep the link and image tied to the same product variant. Never use a merchant homepage, search page, or unrelated image as a substitute.
+- If either asset cannot be observed, explain the gap in `evidence` and keep the item as `needs_review`.
+
 - `title`, `subtitle`, `description`, `brand`, `category`, `condition`.
 - `merchant.name`, `merchant.domain`, `merchant.url`, `merchant.country`, `merchant.platform`, `merchant.sellerName`, `merchant.sellerId`.
 - `identifiers.sourceUrl`, `canonicalUrl`, `productLocator`, `sku`, `asin`, `gtin`, `upc`, `ean`, `isbn`, `mpn`, `productId`, `variantId`, `shopifyProductId`, `shopifyVariantId`.
