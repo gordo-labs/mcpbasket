@@ -43,6 +43,10 @@ Use this map when filling `basket-upsert-product.item`.
 - `readiness`: `missing_locator`, `needs_validation`, `ready`, `blocked`, `unknown`.
 - `orderId`, `lastCheckedAt`, `notes`.
 
+## Permanent Decisions
+
+`decisionBasket.items[]` stores explicitly user-selected, approved product snapshots independently from the active research queue. Each entry keeps `sourceItemId`, `sourceSearchId`, `selectedAt`, and the originating `searchId` when known. `decisionBasket.searches[]` records distinct research contexts and their complete candidate snapshots, so final decisions remain traceable across searches.
+
 ## Minimal Example
 
 ```json

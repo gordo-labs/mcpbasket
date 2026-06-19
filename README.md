@@ -1,6 +1,6 @@
 # MCPBasket
 
-MCPBasket is a local-first pre-purchase workspace for agents. It gives an agent a neutral basket in which to collect, compare, review, and prepare product candidates before a human-approved checkout handled by another integration.
+MCPBasket is a local-first pre-purchase workspace for agents. It records each research session, lets a user select products into one durable final-decision basket across searches, and prepares candidates before a human-approved checkout handled by another integration.
 
 It never creates an order.
 

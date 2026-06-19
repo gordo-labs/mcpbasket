@@ -38,6 +38,11 @@ export function renderBasketViewerHtml(): string {
           <div class="context-chips" id="context-chips" aria-label="Basket context"></div>
         </div>
 
+        <div class="workspace-tabs" role="tablist" aria-label="Basket views">
+          <button class="workspace-tab is-active" id="view-research" type="button" role="tab" aria-selected="true" data-view="research">Research</button>
+          <button class="workspace-tab" id="view-decisions" type="button" role="tab" aria-selected="false" data-view="decisions">Final decisions <span id="decision-count">0</span></button>
+        </div>
+
         <dl class="summary-band" aria-label="Basket summary">
           <div class="metric">
             <dt>Options</dt>
@@ -62,7 +67,7 @@ export function renderBasketViewerHtml(): string {
         </dl>
       </section>
 
-      <section class="workspace-grid" aria-label="Basket review workspace">
+      <section class="workspace-grid" id="research-view" aria-label="Basket review workspace">
         <section class="candidate-region" aria-labelledby="products-heading">
           <header class="region-header">
             <div>
@@ -70,11 +75,21 @@ export function renderBasketViewerHtml(): string {
               <h2 id="products-heading">Products</h2>
               <p class="region-description" id="result-count">Loading candidates</p>
             </div>
-            <label class="search-control" for="search">
-              <span class="sr-only">Search products</span>
-              <span class="search-icon" aria-hidden="true">&#9906;</span>
-              <input id="search" type="search" autocomplete="off" placeholder="Search products">
-            </label>
+            <div class="research-controls">
+              <div class="history-nav" aria-label="Saved search navigation">
+                <button class="icon-button" id="previous-search" type="button" title="Previous saved search" aria-label="Previous saved search">&#8592;</button>
+                <label class="search-selector" for="saved-search">
+                  <span class="sr-only">Saved search</span>
+                  <select id="saved-search"></select>
+                </label>
+                <button class="icon-button" id="next-search" type="button" title="Next saved search" aria-label="Next saved search">&#8594;</button>
+              </div>
+              <label class="search-control" for="search">
+                <span class="sr-only">Search products</span>
+                <span class="search-icon" aria-hidden="true">&#9906;</span>
+                <input id="search" type="search" autocomplete="off" placeholder="Search products">
+              </label>
+            </div>
           </header>
 
           <div class="list-toolbar">
@@ -105,6 +120,25 @@ export function renderBasketViewerHtml(): string {
             <p class="inspector-empty">Choose an option to inspect its price, evidence, and checkout readiness.</p>
           </div>
         </aside>
+      </section>
+
+      <section class="decision-workspace" id="decisions-view" hidden aria-labelledby="decisions-heading">
+        <header class="decision-header">
+          <div>
+            <p class="eyebrow">Permanent local list</p>
+            <h2 id="decisions-heading">Final decisions</h2>
+            <p class="region-description" id="decision-description">Products selected across every saved research session.</p>
+          </div>
+          <span class="decision-total" id="decision-total">0 products</span>
+        </header>
+        <div class="decision-layout">
+          <section class="decision-list" id="decision-items" aria-live="polite"></section>
+          <aside class="search-history" aria-labelledby="history-heading">
+            <p class="eyebrow">Saved research</p>
+            <h3 id="history-heading">Search history</h3>
+            <div class="history-list" id="search-history"></div>
+          </aside>
+        </div>
       </section>
     </main>
   </div>

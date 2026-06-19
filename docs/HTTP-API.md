@@ -10,10 +10,13 @@ The local viewer/API is intended for the local agent runtime and a browser on th
 | `GET` | `/api/model` | field guide | Neutral product model reference. |
 | `GET` | `/api/basket` | compact basket summary | Viewer-oriented state. |
 | `GET` | `/api/basket/raw` | full basket | Complete persisted document. |
+| `GET` | `/api/decisions` | compact final-decision summary | Saved decisions and search-history count. |
 | `POST` | `/api/context` | compact basket summary | Merge or reset research context. |
 | `POST` | `/api/items` | item and basket summary | Create or update a candidate. |
 | `POST` | `/api/items/:id/status` | item and basket summary | Update status only. |
 | `DELETE` | `/api/items/:id` | removal result and summary | Remove a candidate. |
+| `POST` | `/api/decisions` | decision and summaries | Save a user-confirmed candidate as a permanent final decision. |
+| `DELETE` | `/api/decisions/:id` | removal result and summary | Remove a permanent decision without deleting research. |
 | `POST` | `/api/clear` | compact basket summary | Clear items with confirmation. |
 
 ## Error Semantics
@@ -62,3 +65,7 @@ Clear items:
 POST /api/clear
 { "confirm": true }
 ```
+
+Save a final decision with `POST /api/decisions` and `{ "itemId": "candidate-id", "searchId": "saved-search-id", "confirm": true }`.
+
+`confirm` is mandatory. The selected product is copied into `decisionBasket.items`; it survives new search contexts and clearing the active research queue. Each distinct context set through `/api/context` records a candidate snapshot in `decisionBasket.searches`.

@@ -3,6 +3,8 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
     var state = {
       basket: null,
       selectedId: null,
+      selectedSearchId: null,
+      view: "research",
       filter: "all",
       search: "",
       sort: "recommended",
@@ -184,6 +186,79 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
       return chips;
     }
 
+    function decisionBasket() {
+      return asRecord(state.basket && state.basket.decisionBasket);
+    }
+
+    function savedSearches() {
+      return asArray(decisionBasket().searches);
+    }
+
+    function selectedSearch() {
+      var searches = savedSearches();
+      if (!searches.length) return null;
+      var selected = searches.find(function (search) { return search.id === state.selectedSearchId; });
+      if (selected) return selected;
+      var active = searches.find(function (search) { return search.id === state.basket.activeSearchId; });
+      selected = active || searches[searches.length - 1];
+      state.selectedSearchId = selected.id;
+      return selected;
+    }
+
+    function selectedResearchItems() {
+      var search = selectedSearch();
+      if (search && search.id === state.basket.activeSearchId) return asArray(state.basket.items);
+      return search ? asArray(search.items) : asArray(state.basket && state.basket.items);
+    }
+
+    function selectedResearchContext() {
+      var search = selectedSearch();
+      if (search && search.id === state.basket.activeSearchId) return asRecord(state.basket.context);
+      return search ? asRecord(search.context) : asRecord(state.basket && state.basket.context);
+    }
+
+    function selectedSearchIsActive() {
+      return state.selectedSearchId != null && state.selectedSearchId === state.basket.activeSearchId;
+    }
+
+    function finalDecisionFor(item, searchId) {
+      return asArray(decisionBasket().items).find(function (decision) {
+        return decision.sourceItemId === item.id && decision.sourceSearchId === searchId;
+      });
+    }
+
+    function renderSearchNavigator() {
+      var searches = savedSearches();
+      var select = element("saved-search");
+      if (!searches.length) {
+        select.innerHTML = '<option value="">Current research</option>';
+        select.disabled = true;
+        element("previous-search").disabled = true;
+        element("next-search").disabled = true;
+        return;
+      }
+      var currentIndex = searches.findIndex(function (search) { return search.id === state.selectedSearchId; });
+      select.disabled = false;
+      select.innerHTML = searches.map(function (search, index) {
+        var context = asRecord(search.context);
+        var label = displayText(context.title, displayText(context.intent, "Saved research " + String(index + 1)));
+        return '<option value="' + escapeHtml(search.id) + '"' + (search.id === state.selectedSearchId ? " selected" : "") + '>' + escapeHtml(label) + '</option>';
+      }).join("");
+      element("previous-search").disabled = currentIndex <= 0;
+      element("next-search").disabled = currentIndex < 0 || currentIndex >= searches.length - 1;
+    }
+
+    function setWorkspaceView(view) {
+      state.view = view === "decisions" ? "decisions" : "research";
+      element("research-view").hidden = state.view !== "research";
+      element("decisions-view").hidden = state.view !== "decisions";
+      document.querySelectorAll(".workspace-tab").forEach(function (tab) {
+        var active = tab.getAttribute("data-view") === state.view;
+        tab.classList.toggle("is-active", active);
+        tab.setAttribute("aria-selected", String(active));
+      });
+    }
+
     function updateTabs(items) {
       var counts = {
         all: items.length,
@@ -268,6 +343,71 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
       ].join("");
     }
 
+    function renderDecisionItem(decision) {
+      var item = asRecord(decision.item);
+      var product = asRecord(item.product);
+      var price = priceRecord(item);
+      var image = imageUrl(item);
+      var source = sourceUrl(item);
+      var imageMarkup = image
+        ? '<img src="' + escapeHtml(image) + '" alt="' + escapeHtml(displayText(product.title, "Product")) + '">'
+        : escapeHtml(initials(item));
+      var visualMarkup = source
+        ? '<a class="candidate-visual source-image-link" href="' + escapeHtml(source) + '" target="_blank" rel="noreferrer" aria-label="Open product page for ' + escapeHtml(displayText(product.title, "product")) + '">' + imageMarkup + '</a>'
+        : '<div class="candidate-visual">' + imageMarkup + '</div>';
+      return [
+        '<article class="decision-card">',
+          visualMarkup,
+          '<div>',
+            '<h3>' + escapeHtml(displayText(product.title, "Untitled product")) + '</h3>',
+            '<p>' + escapeHtml(merchantName(item)) + ' &middot; Selected ' + escapeHtml(formatTime(decision.selectedAt)) + '</p>',
+            '<span class="pill status-approved">Final decision</span>',
+          '</div>',
+          '<div class="decision-card-side">',
+            '<div class="decision-card-price">' + escapeHtml(formatMoney(price.amount, price.currency)) + '</div>',
+            '<div class="decision-card-actions">',
+              source ? '<a class="source-link" href="' + escapeHtml(source) + '" target="_blank" rel="noreferrer">Open &#8599;</a>' : "",
+              '<button class="remove-button" type="button" data-action="remove-decision" data-id="' + escapeHtml(decision.id) + '">Remove</button>',
+            '</div>',
+          '</div>',
+        '</article>'
+      ].join("");
+    }
+
+    function renderSearchHistory(decisions, searches) {
+      var target = element("search-history");
+      if (!searches.length) {
+        target.innerHTML = '<p class="inspector-empty">Searches will appear here when the agent sets a new research context.</p>';
+        return;
+      }
+      target.innerHTML = searches.slice().reverse().map(function (search) {
+        var context = asRecord(search.context);
+        var selectedCount = decisions.filter(function (decision) { return decision.sourceSearchId === search.id; }).length;
+        var itemCount = asArray(search.items).length;
+        return [
+          '<button class="history-entry" type="button" data-action="open-search" data-search-id="' + escapeHtml(search.id) + '">',
+            '<strong>' + escapeHtml(displayText(context.title, displayText(context.intent, "Saved research"))) + '</strong>',
+            '<p>' + escapeHtml(displayText(context.intent, itemCount + " product candidates")) + '</p>',
+            '<span>' + itemCount + ' candidates &middot; ' + selectedCount + ' final decisions</span>',
+          '</button>'
+        ].join("");
+      }).join("");
+    }
+
+    function renderDecisionWorkspace() {
+      var decisions = asArray(decisionBasket().items);
+      var searches = savedSearches();
+      element("decision-count").textContent = String(decisions.length);
+      element("decision-total").textContent = decisions.length === 1 ? "1 product" : decisions.length + " products";
+      element("decision-description").textContent = decisions.length
+        ? "Products selected across " + searches.length + " saved research sessions."
+        : "Products selected across every saved research session.";
+      element("decision-items").innerHTML = decisions.length
+        ? decisions.map(renderDecisionItem).join("")
+        : '<div class="empty-state"><h3>No final decisions yet</h3><p>Open a saved research session, review a candidate, and add it here when it is selected for a future purchase.</p></div>';
+      renderSearchHistory(decisions, searches);
+    }
+
     function detailRow(label, value) {
       if (value == null || value === "") return "";
       return '<div><dt>' + escapeHtml(label) + '</dt><dd>' + escapeHtml(value) + '</dd></div>';
@@ -294,7 +434,7 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
       }).join("");
     }
 
-    function renderInspector(item) {
+    function renderInspector(item, searchId, isActiveSearch) {
       var target = element("inspector-content");
       if (!item) {
         target.innerHTML = '<p class="eyebrow">Candidate review</p><h2 id="review-heading">Select a product</h2><p class="inspector-empty">Choose an option to inspect its price, evidence, and checkout readiness.</p>';
@@ -320,6 +460,13 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
         : checkout.locator
           ? "A locator exists but the candidate is not approved for checkout."
           : "No checkout locator is captured. This remains research only.";
+      var existingDecision = finalDecisionFor(item, searchId);
+      var decisionAction = existingDecision
+        ? '<span class="decision-saved">Saved to final decisions</span>'
+        : '<button class="decision-button" type="button" data-action="save-decision" data-id="' + escapeHtml(item.id) + '" data-search-id="' + escapeHtml(searchId || "") + '">Add to final decisions</button>';
+      var stageControl = isActiveSearch
+        ? '<label class="stage-control"><span>Research stage</span><select data-action="status" data-id="' + escapeHtml(item.id) + '" aria-label="Research stage for ' + escapeHtml(displayText(product.title, "product")) + '">' + selectOptions(item.status) + '</select></label>'
+        : '<div class="stage-control"><span>Saved research stage</span><strong class="pill ' + statusClass(item.status) + '">' + escapeHtml(statusLabel(item.status)) + '</strong></div>';
       target.innerHTML = [
         '<div class="review-top">',
           '<div>',
@@ -330,8 +477,10 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
           '<div><div class="review-price">' + escapeHtml(formatMoney(price.amount, price.currency)) + '</div>' + listPrice + '</div>',
         '</div>',
         '<div class="review-actions">',
-          '<label class="stage-control"><span>Research stage</span><select data-action="status" data-id="' + escapeHtml(item.id) + '" aria-label="Research stage for ' + escapeHtml(displayText(product.title, "product")) + '">' + selectOptions(item.status) + '</select></label>',
-          '<button class="remove-button" type="button" data-action="remove" data-id="' + escapeHtml(item.id) + '">Remove</button>',
+          stageControl,
+          '<div class="review-action-buttons">', decisionAction,
+          isActiveSearch ? '<button class="remove-button" type="button" data-action="remove" data-id="' + escapeHtml(item.id) + '">Remove</button>' : "",
+          '</div>',
         '</div>',
         '<section class="review-section"><h3>Decision data</h3><dl class="detail-grid">',
           detailRow("Availability", availabilityInfo(item).label),
@@ -350,8 +499,9 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
 
     function render(basket) {
       state.basket = basket;
-      var context = asRecord(basket.context);
-      var items = asArray(basket.items);
+      var search = selectedSearch();
+      var context = selectedResearchContext();
+      var items = selectedResearchItems();
       var selectedExists = items.some(function (item) { return item.id === state.selectedId; });
       if (!selectedExists) state.selectedId = items.length ? items[0].id : null;
 
@@ -368,10 +518,13 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
       element("stat-shortlisted").textContent = String(shortlisted);
       element("stat-shortlisted-detail").textContent = shortlisted ? "Ready for comparison" : "Awaiting review";
       element("stat-approved").textContent = String(approved);
-      element("stat-approved-detail").textContent = approved ? "User decision recorded" : "Nothing approved";
+      element("stat-approved-detail").textContent = approved ? "Selected in this research" : "Nothing selected";
       element("stat-total").textContent = totalText(items);
       element("stat-total-detail").textContent = Object.keys(totalByCurrency(items)).length ? "Across priced options" : "Prices not captured";
       updateTabs(items);
+      renderSearchNavigator();
+      renderDecisionWorkspace();
+      setWorkspaceView(state.view);
 
       var filtered = sortedItems(items.filter(matchesFilter).filter(matchesSearch));
       element("result-count").textContent = filtered.length === items.length
@@ -380,7 +533,11 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
       element("items").innerHTML = filtered.length
         ? filtered.map(renderCandidate).join("")
         : '<div class="empty-state"><h3>No matching products</h3><p>Try a different search or filter. New candidates added by the agent will appear here automatically.</p></div>';
-      renderInspector(items.find(function (item) { return item.id === state.selectedId; }) || null);
+      renderInspector(
+        items.find(function (item) { return item.id === state.selectedId; }) || null,
+        search && search.id,
+        selectedSearchIsActive(),
+      );
     }
 
     function setSyncStatus(message, className) {
@@ -438,11 +595,59 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
       }
     }
 
+    async function saveFinalDecision(id, searchId) {
+      if (!window.confirm("Add this product to the permanent final decision basket?")) return;
+      try {
+        var response = await fetch("/api/decisions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ itemId: id, searchId: searchId || undefined, confirm: true })
+        });
+        if (!response.ok) throw new Error("The final decision could not be saved.");
+        state.view = "decisions";
+        showToast("Saved to final decisions.", false);
+        await loadBasket();
+      } catch (error) {
+        showToast(error instanceof Error ? error.message : "The final decision could not be saved.", true);
+      }
+    }
+
+    async function removeFinalDecision(id) {
+      if (!window.confirm("Remove this product from the permanent final decision basket?")) return;
+      try {
+        var response = await fetch("/api/decisions/" + encodeURIComponent(id), { method: "DELETE" });
+        if (!response.ok) throw new Error("The final decision could not be removed.");
+        showToast("Removed from final decisions.", false);
+        await loadBasket();
+      } catch (error) {
+        showToast(error instanceof Error ? error.message : "The final decision could not be removed.", true);
+      }
+    }
+
+    function selectSavedSearch(searchId) {
+      state.selectedSearchId = searchId;
+      state.selectedId = null;
+      state.search = "";
+      element("search").value = "";
+      render(state.basket || { context: {}, items: [] });
+    }
+
     document.addEventListener("click", function (event) {
       var button = event.target.closest("button");
       if (!button) return;
       if (button.id === "refresh") {
         loadBasket();
+        return;
+      }
+      if (button.classList.contains("workspace-tab")) {
+        setWorkspaceView(button.getAttribute("data-view"));
+        return;
+      }
+      if (button.id === "previous-search" || button.id === "next-search") {
+        var searches = savedSearches();
+        var currentIndex = searches.findIndex(function (search) { return search.id === state.selectedSearchId; });
+        var nextIndex = button.id === "previous-search" ? currentIndex - 1 : currentIndex + 1;
+        if (searches[nextIndex]) selectSavedSearch(searches[nextIndex].id);
         return;
       }
       if (button.classList.contains("filter-tab")) {
@@ -461,6 +666,13 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
         render(state.basket || { context: {}, items: [] });
       } else if (action === "remove") {
         removeItem(button.getAttribute("data-id"));
+      } else if (action === "save-decision") {
+        saveFinalDecision(button.getAttribute("data-id"), button.getAttribute("data-search-id"));
+      } else if (action === "remove-decision") {
+        removeFinalDecision(button.getAttribute("data-id"));
+      } else if (action === "open-search") {
+        state.view = "research";
+        selectSavedSearch(button.getAttribute("data-search-id"));
       }
     });
 
@@ -472,6 +684,10 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
     element("sort").addEventListener("change", function (event) {
       state.sort = event.target.value;
       render(state.basket || { context: {}, items: [] });
+    });
+
+    element("saved-search").addEventListener("change", function (event) {
+      selectSavedSearch(event.target.value);
     });
 
     document.addEventListener("change", function (event) {

@@ -49,6 +49,33 @@ test("viewer HTTP API validates input and persists a candidate", async () => {
       assert.equal(rawBasket.items[0].product.identifiers.sourceUrl, "https://example.com/products/travel-mug");
       assert.equal(rawBasket.items[0].product.images[0].url, "https://example.com/images/travel-mug.jpg");
 
+      const missingConfirmation = await fetch(`${baseUrl}/api/decisions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ itemId: rawBasket.items[0].id }),
+      });
+      assert.equal(missingConfirmation.status, 400);
+
+      const decisionResponse = await fetch(`${baseUrl}/api/decisions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ itemId: rawBasket.items[0].id, confirm: true }),
+      });
+      assert.equal(decisionResponse.status, 201);
+      const decisions = await decisionResponse.json();
+      assert.equal(decisions.decisions.itemCount, 1);
+      assert.equal(decisions.decision.item.product.title, "Travel mug");
+
+      const listDecisionsResponse = await fetch(`${baseUrl}/api/decisions`);
+      assert.equal(listDecisionsResponse.status, 200);
+      assert.equal((await listDecisionsResponse.json()).itemCount, 1);
+
+      const removeDecisionResponse = await fetch(`${baseUrl}/api/decisions/${decisions.decision.id}`, {
+        method: "DELETE",
+      });
+      assert.equal(removeDecisionResponse.status, 200);
+      assert.equal((await removeDecisionResponse.json()).removed, true);
+
       const invalidJson = await fetch(`${baseUrl}/api/items`, {
         method: "POST",
         headers: {

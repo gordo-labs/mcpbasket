@@ -1,6 +1,6 @@
 ---
 name: mcpbasket
-description: Use when an agent researches, compares, shortlists, or prepares products or services for purchase; when it needs a neutral pre-checkout basket, product candidates, a hosted basket preview, MCP basket tools, or generic checkout line-item export before a user-approved purchase. Also use when installing or operating the mcpbasket MCP and Vercel viewer.
+description: Use when an agent researches, recommends, compares, shortlists, prices, or prepares products or services for a possible purchase; when it needs a neutral pre-checkout basket, saved research sessions, durable final decisions, MCP basket tools, a local basket preview, or generic checkout line-item export before a user-approved purchase. Also use when installing or operating the local mcpbasket MCP and viewer.
 ---
 
 # MCPBasket
@@ -8,6 +8,10 @@ description: Use when an agent researches, compares, shortlists, or prepares pro
 ## Core Rule
 
 Use the basket as the default pre-purchase workspace. Do not call any real checkout tool unless the user explicitly approves the exact product, merchant, price or estimate, quantity, delivery destination, and payment path.
+
+## Prompt Routing
+
+Treat a request as basket work when it asks to find, recommend, compare, shortlist, price, or source a potentially purchasable product or service. The user does not need to say "basket". Set context before researching so MCPBasket saves the search session and its candidate snapshot.
 
 ## Package
 
@@ -59,6 +63,11 @@ MCPBASKET_STORE_PATH=.mcpbasket/basket.json
 
 5. Use `basket-export-checkout-line-items` only for approved or `ready_for_checkout` items with valid locators. It prepares data; it does not place an order.
 
+6. When the user explicitly chooses a product as a final buying decision, call `basket-add-to-decision-basket` with `confirm: true`.
+   - This copies the approved product into the durable local decision basket; it remains when research context changes or the active basket is cleared.
+   - `basket-set-context` creates a saved search session per distinct title or intent. Its candidate snapshot and selections persist when the next search starts.
+   - Pass `searchId` when selecting a product from a historical search. Use `basket-list-decision-basket` to review saved decisions and their originating searches. Removing a decision never removes its research candidate.
+
 ## MCP Tools
 
 - `basket-set-context`: set intent and constraints.
@@ -67,7 +76,10 @@ MCPBASKET_STORE_PATH=.mcpbasket/basket.json
 - `basket-update-status`: move candidate state.
 - `basket-remove-product`: remove a candidate.
 - `basket-clear`: clear basket with confirmation.
-- `basket-get-viewer`: get local and hosted viewer URLs and API endpoints.
+- `basket-add-to-decision-basket`: save an explicitly selected candidate to the durable local decision basket.
+- `basket-list-decision-basket`: list final decisions and saved research sessions.
+- `basket-remove-from-decision-basket`: remove a final decision without deleting research.
+- `basket-get-viewer`: get the local viewer URL, API endpoints, and startup command.
 - `basket-export-checkout-line-items`: prepare generic checkout line items.
 
 ## Data Quality

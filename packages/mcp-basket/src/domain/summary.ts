@@ -1,4 +1,4 @@
-import type { Basket, CartItem, Money } from "./model.js";
+import type { Basket, CartItem, DecisionBasket, Money } from "./model.js";
 import { checkoutLocatorFor, isCheckoutReady } from "./basket.js";
 
 export type BasketSummaryItem = {
@@ -26,6 +26,8 @@ export type BasketSummary = {
   statuses: Partial<Record<CartItem["status"], number>>;
   checkoutReady: number;
   missingCheckoutLocator: number;
+  finalDecisionCount: number;
+  searchHistoryCount: number;
   totalsByCurrency: Record<string, number>;
   updatedAt: string;
   items: BasketSummaryItem[];
@@ -95,8 +97,30 @@ export function summarizeBasket(basket: Basket): BasketSummary {
     statuses,
     checkoutReady: basket.items.filter(isCheckoutReady).length,
     missingCheckoutLocator: basket.items.filter((item) => checkoutLocatorFor(item) == null).length,
+    finalDecisionCount: basket.decisionBasket?.items.length || 0,
+    searchHistoryCount: basket.decisionBasket?.searches.length || 0,
     totalsByCurrency,
     updatedAt: basket.updatedAt,
     items: basket.items.map(compactBasketItem),
+  };
+}
+
+export function summarizeDecisionBasket(decisionBasket: DecisionBasket | undefined): {
+  itemCount: number;
+  searchCount: number;
+  items: Array<ReturnType<typeof compactBasketItem> & { id: string; sourceItemId: string; sourceSearchId?: string; selectedAt: string; searchId?: string }>;
+} {
+  const items = decisionBasket?.items || [];
+  return {
+    itemCount: items.length,
+    searchCount: decisionBasket?.searches.length || 0,
+    items: items.map((decision) => ({
+      ...compactBasketItem(decision.item),
+      id: decision.id,
+      sourceItemId: decision.sourceItemId,
+      sourceSearchId: decision.sourceSearchId,
+      selectedAt: decision.selectedAt,
+      searchId: decision.searchId,
+    })),
   };
 }

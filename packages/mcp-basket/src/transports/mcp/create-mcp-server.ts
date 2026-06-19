@@ -6,6 +6,7 @@ import {
   CandidateStatusSchema,
   CartItemInputSchema,
   summarizeBasket,
+  summarizeDecisionBasket,
 } from "../../domain/index.js";
 import type { BasketRuntime } from "../../runtime/index.js";
 
@@ -118,6 +119,62 @@ export function createMcpBasketServer(runtime: BasketRuntime): McpServer {
   );
 
   registerTool(
+    "basket-add-to-decision-basket",
+    "Save an explicitly user-approved product as a durable final decision. It remains across future searches and does not create an order.",
+    {
+      itemId: z.string().describe("Research basket item id to save as a final decision."),
+      searchId: z.string().optional().describe("Saved research id. Defaults to the active search."),
+      confirm: z.boolean().describe("Must be true after the user explicitly selects this product for the permanent decision basket."),
+    },
+    async (input) => {
+      const { itemId, searchId, confirm } = z.object({ itemId: z.string(), searchId: z.string().optional(), confirm: z.boolean() }).parse(input);
+      if (confirm !== true) {
+        return textResponse({ error: "confirm must be true to save a final decision" });
+      }
+      const result = await runtime.service.addToDecisionBasket(itemId, searchId);
+      if (result == null) {
+        return textResponse({ error: "Item not found", itemId });
+      }
+      return textResponse({
+        created: result.created,
+        decision: result.item,
+        decisions: summarizeDecisionBasket(result.basket.decisionBasket),
+        basket: summarizeBasket(result.basket),
+        ...runtime.links,
+      });
+    },
+  );
+
+  registerTool(
+    "basket-list-decision-basket",
+    "List the durable final purchase decisions and the search history that produced them",
+    { includeRaw: z.boolean().optional().describe("Return stored decision and search records instead of the compact summary.") },
+    async (input) => {
+      const { includeRaw } = z.object({ includeRaw: z.boolean().optional() }).parse(input);
+      const basket = await runtime.service.load();
+      return textResponse({
+        decisions: includeRaw ? basket.decisionBasket : summarizeDecisionBasket(basket.decisionBasket),
+        ...runtime.links,
+      });
+    },
+  );
+
+  registerTool(
+    "basket-remove-from-decision-basket",
+    "Remove a product from the durable final decision basket without deleting its research candidate",
+    { id: z.string().describe("Permanent decision id.") },
+    async (input) => {
+      const { id } = z.object({ id: z.string() }).parse(input);
+      const result = await runtime.service.removeFromDecisionBasket(id);
+      return textResponse({
+        removed: result.removed,
+        decisions: summarizeDecisionBasket(result.basket.decisionBasket),
+        ...runtime.links,
+      });
+    },
+  );
+
+  registerTool(
     "basket-remove-product",
     "Remove a product candidate from the pre-checkout basket",
     { id: z.string().describe("Basket item id.") },
@@ -151,7 +208,7 @@ export function createMcpBasketServer(runtime: BasketRuntime): McpServer {
 
   registerTool(
     "basket-get-viewer",
-    "Return local and hosted basket viewer URLs, API endpoints, and startup command",
+    "Return the local basket viewer URL, API endpoints, and startup command",
     {},
     async () => {
       return textResponse({

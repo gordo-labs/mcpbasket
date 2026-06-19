@@ -122,12 +122,46 @@ export const BasketContextSchema = z
   })
   .passthrough();
 
+export const DecisionSearchSchema = z
+  .object({
+    id: z.string(),
+    context: BasketContextSchema,
+    items: z.array(CartItemSchema).default([]),
+    createdAt: z.string(),
+    updatedAt: z.string(),
+  })
+  .passthrough();
+
+export const DecisionBasketItemSchema = z
+  .object({
+    id: z.string(),
+    sourceItemId: z.string(),
+    sourceSearchId: z.string().optional(),
+    item: CartItemSchema,
+    searchId: z.string().optional(),
+    selectedAt: z.string(),
+    updatedAt: z.string(),
+  })
+  .passthrough();
+
+export const DecisionBasketSchema = z
+  .object({
+    id: z.string(),
+    items: z.array(DecisionBasketItemSchema).default([]),
+    searches: z.array(DecisionSearchSchema).default([]),
+    createdAt: z.string(),
+    updatedAt: z.string(),
+  })
+  .passthrough();
+
 export const BasketSchema = z
   .object({
     version: z.literal(1).default(1),
     id: z.string(),
     context: BasketContextSchema.default({}),
     items: z.array(CartItemSchema).default([]),
+    activeSearchId: z.string().optional(),
+    decisionBasket: DecisionBasketSchema.optional(),
     createdAt: z.string(),
     updatedAt: z.string(),
   })
@@ -144,6 +178,9 @@ export type CartItem = z.infer<typeof CartItemSchema>;
 export type CartItemInput = z.infer<typeof CartItemInputSchema>;
 export type BasketContext = z.infer<typeof BasketContextSchema>;
 export type BasketContextInput = z.infer<typeof BasketContextInputSchema>;
+export type DecisionSearch = z.infer<typeof DecisionSearchSchema>;
+export type DecisionBasketItem = z.infer<typeof DecisionBasketItemSchema>;
+export type DecisionBasket = z.infer<typeof DecisionBasketSchema>;
 export type Basket = z.infer<typeof BasketSchema>;
 
 export type Money = Record<string, unknown> & {
@@ -163,4 +200,5 @@ export const BASKET_MODEL_FIELD_GUIDE = [
   "product.policy for returns, warranty, restrictions, subscription terms",
   "product.evidence for query, sources, confidence, and why it matches the user intent",
   "checkout.provider, locator, supported, readiness before any real purchase",
+  "decisionBasket.items for persistent final decisions and decisionBasket.searches for saved research contexts and candidate snapshots",
 ] as const;

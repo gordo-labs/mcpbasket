@@ -1,10 +1,12 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
+import { z } from "zod";
 import {
   BASKET_MODEL_FIELD_GUIDE,
   BasketContextInputSchema,
   CandidateStatusSchema,
   CartItemInputSchema,
   summarizeBasket,
+  summarizeDecisionBasket,
 } from "../../domain/index.js";
 import { createBasketRuntime, type BasketRuntime } from "../../runtime/index.js";
 import { renderBasketViewerHtml } from "../../presentation/local-viewer-html.js";
@@ -122,6 +124,11 @@ export async function createBasketViewerServer(
         return;
       }
 
+      if (request.method === "GET" && pathname === "/api/decisions") {
+        sendJson(response, 200, summarizeDecisionBasket((await runtime.service.load()).decisionBasket));
+        return;
+      }
+
       if (request.method === "POST" && pathname === "/api/context") {
         const input = BasketContextInputSchema.parse(await readJson(request));
         sendJson(response, 200, summarizeBasket(await runtime.service.setContext(input)));
@@ -138,6 +145,25 @@ export async function createBasketViewerServer(
         const result = await runtime.service.upsertItem(input);
         sendJson(response, result.created ? 201 : 200, {
           item: result.item,
+          basket: summarizeBasket(result.basket),
+        });
+        return;
+      }
+
+      if (request.method === "POST" && pathname === "/api/decisions") {
+        const body = await readJson(request);
+        if ((body as { confirm?: boolean }).confirm !== true) {
+          throw new HttpError(400, "confirm must be true to save a final decision");
+        }
+        const { itemId, searchId } = z.object({ itemId: z.string(), searchId: z.string().optional() }).parse(body);
+        const result = await runtime.service.addToDecisionBasket(itemId, searchId);
+        if (result == null) {
+          sendJson(response, 404, { error: "Item not found" });
+          return;
+        }
+        sendJson(response, result.created ? 201 : 200, {
+          decision: result.item,
+          decisions: summarizeDecisionBasket(result.basket.decisionBasket),
           basket: summarizeBasket(result.basket),
         });
         return;
@@ -163,6 +189,16 @@ export async function createBasketViewerServer(
         sendJson(response, removed ? 200 : 404, {
           removed,
           basket: summarizeBasket(await runtime.service.load()),
+        });
+        return;
+      }
+
+      const decisionId = pathname.startsWith("/api/decisions/") ? decodeURIComponent(pathname.slice("/api/decisions/".length)) : null;
+      if (request.method === "DELETE" && decisionId != null && decisionId.length > 0) {
+        const result = await runtime.service.removeFromDecisionBasket(decisionId);
+        sendJson(response, result.removed ? 200 : 404, {
+          removed: result.removed,
+          decisions: summarizeDecisionBasket(result.basket.decisionBasket),
         });
         return;
       }

@@ -44,3 +44,40 @@ test("BasketService persists candidates and exports only approved, located items
     assert.equal(restored.items[0].status, "approved");
   });
 });
+
+test("BasketService retains final decisions and search history across new research contexts", async () => {
+  await withTemporaryStore(async (storePath) => {
+    let tick = 0;
+    const ids = ["search-one", "product-one", "search-two", "product-two", "decision-one", "decision-two"];
+    const service = new BasketService(new FileBasketRepository(storePath), {
+      clock: () => `2026-06-19T01:00:0${tick++}.000Z`,
+      idGenerator: () => ids.shift() || "fallback-id",
+    });
+
+    await service.setContext({ title: "Desk setup", intent: "Find a quiet keyboard", currency: "EUR" });
+    const keyboard = await service.upsertItem({ product: { title: "Quiet keyboard" } });
+
+    await service.clear();
+    await service.setContext({ title: "Travel setup", intent: "Find a carry-on bag", currency: "EUR" });
+    const carryOn = await service.upsertItem({ product: { title: "Carry-on bag" } });
+    const historicalDecision = await service.addToDecisionBasket(keyboard.item.id, "search-one");
+    const activeDecision = await service.addToDecisionBasket(carryOn.item.id);
+    assert.equal(historicalDecision?.created, true);
+    assert.equal(activeDecision?.created, true);
+    assert.equal(historicalDecision?.item.item.status, "approved");
+
+    const restartedService = new BasketService(new FileBasketRepository(storePath));
+    const restored = await restartedService.load();
+
+    assert.equal(restored.decisionBasket.items.length, 2);
+    assert.equal(restored.decisionBasket.items[0].sourceItemId, keyboard.item.id);
+    assert.equal(restored.decisionBasket.items[0].sourceSearchId, "search-one");
+    assert.equal(restored.decisionBasket.items[1].sourceItemId, carryOn.item.id);
+    assert.equal(restored.decisionBasket.items[1].sourceSearchId, "search-two");
+    assert.equal(restored.decisionBasket.searches.length, 2);
+    assert.equal(restored.decisionBasket.searches[0].context.title, "Desk setup");
+    assert.equal(restored.decisionBasket.searches[0].items[0].status, "approved");
+    assert.equal(restored.decisionBasket.searches[1].context.title, "Travel setup");
+    assert.equal(restored.decisionBasket.searches[1].items[0].status, "approved");
+  });
+});

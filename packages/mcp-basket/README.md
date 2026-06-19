@@ -2,7 +2,7 @@
 
 Model Context Protocol server for a neutral pre-checkout basket.
 
-The basket lets an agent collect product candidates while researching online stores, show those candidates in a local or hosted viewer, and only later export approved items into generic checkout line items.
+The basket lets an agent collect product candidates while researching online stores, preserve each search as a local snapshot, collect final decisions across searches, show them in a local viewer, and only later export approved items into generic checkout line items.
 
 ## Architecture
 
@@ -12,7 +12,7 @@ See [`docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md) and [`docs/HTTP-API.md`
 
 ## What It Includes
 
-- MCP tools to set basket context, add products, review candidates, update status, remove items, and export checkout line items.
+- MCP tools to set basket context, add products, review candidates, save explicit final decisions, remove items, and export checkout line items.
 - Local JSON persistence under `.mcpbasket/basket.json` by default.
 - Local HTTP API and built-in viewer for the machine running the agent.
 - Generic `lineItems` export for a separate checkout integration.
@@ -68,6 +68,9 @@ POST   /api/context
 POST   /api/items
 POST   /api/items/:id/status
 DELETE /api/items/:id
+GET    /api/decisions
+POST   /api/decisions
+DELETE /api/decisions/:id
 POST   /api/clear
 ```
 
