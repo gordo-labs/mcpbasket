@@ -3,19 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "description": "Installable agent basket MCP, skill, and hosted preview web app.",
-  "workspaces": [
-    "packages/*",
-    "apps/*"
-  ],
+  "workspaces": ["packages/*"],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
     "build:mcp": "npm --workspace packages/mcp-basket run build",
-    "build:web": "npm --workspace apps/demo-web run build",
-    "dev:web": "npm --workspace apps/demo-web run dev",
-    "lint": "npm --workspace apps/demo-web run lint",
     "mcp": "npm --workspace packages/mcp-basket run mcpbasket",
     "test": "npm --workspace packages/mcp-basket run test",
-    "verify": "npm run build && npm run lint && npm run test",
+    "verify": "npm run build && npm run test",
     "viewer": "npm --workspace packages/mcp-basket run basket-viewer"
   },
   "keywords": [

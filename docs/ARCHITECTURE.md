@@ -60,6 +60,6 @@ Candidates move through `candidate`, `shortlisted`, `needs_review`, `approved`, 
 
 ## Security Boundary
 
-The local HTTP API is mutation-capable. It binds to `127.0.0.1` by default and has no authentication because it is designed for the agent's local machine. The hosted viewer is stateless and reaches the local API only through the browser's chosen `source` URL.
+The local HTTP API is mutation-capable. It binds to `127.0.0.1` by default and has no authentication because it is designed for the agent's local machine. It is not a remote access API and does not issue public viewer URLs.
 
-Use a trusted tunnel when remote access is necessary. Do not bind the API to a public interface without adding authentication and an authorization model.
+Mobile viewing, remote persistence, authentication, and purchase authorization belong to a separate public service. Its proposed trust boundaries and API are documented in [`REMOTE-SERVICE.md`](REMOTE-SERVICE.md); that service is not implemented in this repository.

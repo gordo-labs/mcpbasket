@@ -27,7 +27,7 @@
   "license": "MIT",
   "description": "Model Context Protocol server and viewer for a neutral agent pre-checkout basket",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "1.25.0",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "dotenv": "^16.4.5",
     "zod": "3.25.23"
   },

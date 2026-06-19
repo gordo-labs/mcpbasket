@@ -1,6 +1,6 @@
 # HTTP API
 
-The local viewer/API is intended for the local agent runtime and a browser viewer. It returns JSON with `Cache-Control: no-store` and supports Private Network Access preflight for the hosted viewer.
+The local viewer/API is intended for the local agent runtime and a browser on the same machine. It returns JSON with `Cache-Control: no-store` and is not a public or mobile API.
 
 ## Endpoints
 

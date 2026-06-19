@@ -21,10 +21,6 @@ class HttpError extends Error {
 }
 
 function setBaseHeaders(response: ServerResponse): void {
-  response.setHeader("Access-Control-Allow-Origin", "*");
-  response.setHeader("Access-Control-Allow-Methods", "GET,POST,DELETE,OPTIONS");
-  response.setHeader("Access-Control-Allow-Headers", "Content-Type, Access-Control-Request-Private-Network");
-  response.setHeader("Access-Control-Allow-Private-Network", "true");
   response.setHeader("Cache-Control", "no-store");
 }
 
@@ -94,13 +90,6 @@ export async function createBasketViewerServer(
 
   return createServer(async (request, response) => {
     try {
-      if (request.method === "OPTIONS") {
-        setBaseHeaders(response);
-        response.statusCode = 204;
-        response.end();
-        return;
-      }
-
       const url = new URL(request.url || "/", `http://${request.headers.host || "localhost"}`);
       const pathname = url.pathname;
 

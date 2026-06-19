@@ -10,8 +10,7 @@
   "args": ["/absolute/path/to/mcpbasket/packages/mcp-basket/build/index.js"],
   "env": {
     "MCPBASKET_PORT": "4377",
-    "MCPBASKET_BIND_HOST": "127.0.0.1",
-    "MCPBASKET_HOSTED_VIEWER_URL": "https://mcpbasket.gordo.design"
+    "MCPBASKET_BIND_HOST": "127.0.0.1"
   }
 }
 ```
@@ -19,16 +18,4 @@
 4. Install or point Hermes to `skills/mcpbasket`.
 5. Start the local viewer/API with `npm run viewer` or configure Hermes to start it as a sidecar.
 
-The hosted viewer reads the local MCP API through `source`:
-
-```text
-https://mcpbasket.gordo.design?source=http://localhost:4377/api/basket
-```
-
-If the browser cannot access localhost from the hosted page, expose the API through a trusted tunnel and set:
-
-```text
-MCPBASKET_PUBLIC_HOST=https://your-tunnel.example.com
-```
-
-Keep `MCPBASKET_BIND_HOST=127.0.0.1`; the tunnel should connect locally. Do not expose the basket API directly to an untrusted network because it accepts mutations.
+The current viewer is loopback-only and intended for the same machine as Hermes. It is not a public sharing surface. Public mobile viewing, authenticated agent ingestion, and payment authorization require the planned remote service in [`REMOTE-SERVICE.md`](REMOTE-SERVICE.md).

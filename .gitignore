@@ -2,6 +2,9 @@ node_modules/
 .npm-cache/
 .vercel/
 
+# Internal-only experiment. The public repository ships the local viewer and MCP.
+apps/demo-web/
+
 build/
 dist/
 .mcpbasket/

@@ -10,20 +10,19 @@ It never creates an order.
 | --- | --- |
 | `packages/mcp-basket` | Domain model, application service, MCP adapter, local HTTP API, JSON store, and local viewer. |
 | `skills/mcpbasket` | Agent workflow for researching and recording product candidates. |
-| `apps/demo-web` | Stateless Next.js viewer that reads any compatible basket API. |
 
 ## System Design
 
-The basket state remains on the machine running the agent. The local MCP process and local viewer/API use the same application service and persistent store. The hosted web app only renders data from a supplied `source` URL.
+The basket state remains on the machine running the agent. The local MCP process and local viewer/API use the same application service and persistent store.
 
 ```text
 Agent + skill -> MCP adapter -> BasketService -> JSON repository
                                       ^                |
                                       |                v
-Hosted viewer <- local HTTP adapter <- shared basket state
+                              Local viewer/API <- shared basket state
 ```
 
-The core is deliberately independent from transport and merchant-specific checkout. Read [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for boundaries and extension points.
+The core is deliberately independent from transport and merchant-specific checkout. Read [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for boundaries and extension points. A public service for mobile viewing and trusted purchase authorization is designed but not implemented; its proposed shape is in [`docs/REMOTE-SERVICE.md`](docs/REMOTE-SERVICE.md).
 
 ## Quick Start
 
@@ -46,17 +45,14 @@ Run the MCP server:
 npm run mcp
 ```
 
-The default local API is `http://localhost:4377/api/basket`. The hosted viewer can read it with:
-
-```text
-https://mcpbasket.gordo.design?source=http://localhost:4377/api/basket
-```
+The local viewer command prints the loopback URL for the machine running the agent. It is the MVP inspection surface; it is not a public sharing mechanism.
 
 ## Integrations
 
 - [MCP server package](packages/mcp-basket/README.md)
 - [Hermes installation](docs/HERMES.md)
 - [HTTP API contract](docs/HTTP-API.md)
+- [Planned remote service](docs/REMOTE-SERVICE.md)
 - [Agent skill](skills/mcpbasket/SKILL.md)
 - [Contributing](CONTRIBUTING.md)
 
