@@ -151,7 +151,7 @@ export function createMcpBasketServer(runtime: BasketRuntime): McpServer {
 
   registerTool(
     "basket-get-viewer",
-    "Return local and hosted basket viewer URLs, API endpoints, and startup command",
+    "Return the local basket viewer URL, API endpoints, and startup command",
     {},
     async () => {
       return textResponse({

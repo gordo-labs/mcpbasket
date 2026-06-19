@@ -54,6 +54,7 @@ The local viewer command prints the loopback URL for the machine running the age
 - [HTTP API contract](docs/HTTP-API.md)
 - [Planned remote service](docs/REMOTE-SERVICE.md)
 - [Agent skill](skills/mcpbasket/SKILL.md)
+- [Prompt construction for agents](skills/mcpbasket/references/prompting.md)
 - [Contributing](CONTRIBUTING.md)
 
 ## Quality Gates
