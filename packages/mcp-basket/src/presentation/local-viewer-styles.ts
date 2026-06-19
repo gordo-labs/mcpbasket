@@ -724,6 +724,50 @@ export const LOCAL_VIEWER_STYLES = String.raw`
   .secondary-button:hover { background: #f8fafb; }
   .has-modal { overflow: hidden; }
 
+  .source-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 9;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    background: rgba(21, 24, 31, 0.52);
+  }
+  .source-modal[hidden] { display: none; }
+  .source-modal-card {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    width: min(760px, 100%);
+    height: min(820px, calc(100dvh - 40px));
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    background: var(--paper);
+    box-shadow: 0 22px 60px rgba(16, 24, 40, 0.3);
+  }
+  .source-modal-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--line);
+  }
+  .source-modal-header h2 { margin: 5px 0 0; color: var(--ink); font-size: 16px; line-height: 1.3; }
+  .source-modal-header .modal-close { position: static; flex: 0 0 auto; }
+  .source-frame-shell { min-height: 0; background: #f8fafb; }
+  .source-frame-shell iframe { display: block; width: 100%; height: 100%; border: 0; background: #ffffff; }
+  .source-modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 18px calc(12px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--line);
+    background: var(--paper);
+  }
+  .source-modal-footer span { color: var(--muted); font-size: 11px; line-height: 1.35; }
+
   .toast {
     position: fixed;
     right: 22px;
@@ -818,6 +862,10 @@ export const LOCAL_VIEWER_STYLES = String.raw`
     .mobile-checkout-bar { display: flex; }
     .checkout-panel .checkout-button { display: none; }
     .checkout-modal-card { padding: 24px 20px; }
+    .source-modal { padding: 0; }
+    .source-modal-card { width: 100%; height: 100dvh; border: 0; border-radius: 0; }
+    .source-modal-header { padding: 13px 18px; }
+    .source-modal-footer { padding-right: 18px; padding-left: 18px; }
     .stage-control select { width: 100%; }
     .remove-button { align-self: flex-start; }
   }

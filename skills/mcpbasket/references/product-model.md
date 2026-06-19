@@ -20,6 +20,7 @@ Use this map when filling `basket-upsert-product.item`.
 - Save the primary product image in `urls.image` or `images[0].url` with descriptive `alt` text when available.
 - Keep the link and image tied to the same product variant. Never use a merchant homepage, search page, or unrelated image as a substitute.
 - If either asset cannot be observed, explain the gap in `evidence` and keep the item as `needs_review`.
+- Before treating a direct product URL as verified, open it and confirm it is the matching product-detail page. Record `evidence.linkValidation.status` (`verified`, `blocked`, or `unverified`), `checkedAt`, `observedUrl`, `finalUrl`, and a reason when it is not verified. Do not infer a verified link from a search result or URL pattern.
 
 - `title`, `subtitle`, `description`, `brand`, `category`, `condition`.
 - `merchant.name`, `merchant.domain`, `merchant.url`, `merchant.country`, `merchant.platform`, `merchant.sellerName`, `merchant.sellerId`.
@@ -33,7 +34,7 @@ Use this map when filling `basket-upsert-product.item`.
 - `fulfillment.type`, `shipsFrom`, `deliveryWindow`, `shippingSpeed`, `carrier`, `destinationCountry`, `requiresPhysicalAddress`.
 - `policy.returns`, `warranty`, `ageRestriction`, `regionRestrictions`, `subscriptionTerms`, `complianceNotes`.
 - `rating.value`, `scale`, `count`, `reviewSummary`.
-- `evidence.foundBy`, `query`, `reason`, `confidence`, `sources[]`.
+- `evidence.foundBy`, `query`, `reason`, `confidence`, `sources[]`, `linkValidation.status`, `linkValidation.checkedAt`, `linkValidation.observedUrl`, `linkValidation.finalUrl`, `linkValidation.reason`.
 
 ## Checkout
 

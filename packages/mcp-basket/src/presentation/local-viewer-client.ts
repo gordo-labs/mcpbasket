@@ -8,7 +8,8 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
       filter: "all",
       search: "",
       sort: "recommended",
-      toastTimer: null
+      toastTimer: null,
+      sourceOpener: null
     };
 
     var STATUS_LABELS = {
@@ -318,10 +319,10 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
         ? '<img src="' + escapeHtml(image) + '" alt="' + escapeHtml(displayText(product.title, "Product")) + '">'
         : escapeHtml(initials(item));
       var visualMarkup = source
-        ? '<a class="candidate-visual source-image-link" href="' + escapeHtml(source) + '" target="_blank" rel="noreferrer" aria-label="Open product page for ' + escapeHtml(displayText(product.title, "product")) + '">' + imageMarkup + '</a>'
+        ? '<a class="candidate-visual source-image-link" data-source-modal="true" data-source-title="' + escapeHtml(displayText(product.title, "Product page")) + '" href="' + escapeHtml(source) + '" target="_blank" rel="noreferrer" aria-label="Open product page for ' + escapeHtml(displayText(product.title, "product")) + '">' + imageMarkup + '</a>'
         : '<div class="candidate-visual">' + imageMarkup + '</div>';
       var sourceMarkup = source
-        ? '<a class="source-link" href="' + escapeHtml(source) + '" target="_blank" rel="noreferrer">View source &#8599;</a>'
+        ? '<a class="source-link" data-source-modal="true" data-source-title="' + escapeHtml(displayText(product.title, "Product page")) + '" href="' + escapeHtml(source) + '" target="_blank" rel="noreferrer">View source &#8599;</a>'
         : '<span class="source-link">No source</span>';
       var existingDecision = finalDecisionFor(item, searchId);
       var mainBasketAction = existingDecision
@@ -366,7 +367,7 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
         ? '<img src="' + escapeHtml(image) + '" alt="' + escapeHtml(displayText(product.title, "Product")) + '">'
         : escapeHtml(initials(item));
       var visualMarkup = source
-        ? '<a class="candidate-visual source-image-link" href="' + escapeHtml(source) + '" target="_blank" rel="noreferrer" aria-label="Open product page for ' + escapeHtml(displayText(product.title, "product")) + '">' + imageMarkup + '</a>'
+        ? '<a class="candidate-visual source-image-link" data-source-modal="true" data-source-title="' + escapeHtml(displayText(product.title, "Product page")) + '" href="' + escapeHtml(source) + '" target="_blank" rel="noreferrer" aria-label="Open product page for ' + escapeHtml(displayText(product.title, "product")) + '">' + imageMarkup + '</a>'
         : '<div class="candidate-visual">' + imageMarkup + '</div>';
       var selectedOptions = asArray(product.selectedOptions).map(function (option) {
         var record = asRecord(option);
@@ -383,7 +384,7 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
           '<div class="main-basket-item-side">',
             '<div class="main-basket-item-price">' + escapeHtml(formatMoney(price.amount, price.currency)) + '</div>',
             '<div class="main-basket-item-actions">',
-              source ? '<a class="source-link" href="' + escapeHtml(source) + '" target="_blank" rel="noreferrer">Open &#8599;</a>' : "",
+              source ? '<a class="source-link" data-source-modal="true" data-source-title="' + escapeHtml(displayText(product.title, "Product page")) + '" href="' + escapeHtml(source) + '" target="_blank" rel="noreferrer">Open &#8599;</a>' : "",
               '<button class="remove-button" type="button" data-action="remove-decision" data-id="' + escapeHtml(decision.id) + '">Remove</button>',
             '</div>',
           '</div>',
@@ -524,7 +525,7 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
         '<section class="review-section"><h3>Key attributes</h3>', attributesMarkup(item), '</section>',
         '<section class="review-section"><h3>Research notes</h3><p>' + escapeHtml(displayText(item.notes || evidence.reason, "No rationale or notes captured yet.")) + '</p>',
           '<div class="evidence-meta">Evidence confidence: ' + escapeHtml(displayText(evidence.confidence, "unknown")) + '<br>Last updated: ' + escapeHtml(formatTime(item.updatedAt)) + '</div>',
-          source ? '<p><a class="source-link" href="' + escapeHtml(source) + '" target="_blank" rel="noreferrer">Open product source &#8599;</a></p>' : "",
+          source ? '<p><a class="source-link" data-source-modal="true" data-source-title="' + escapeHtml(displayText(product.title, "Product page")) + '" href="' + escapeHtml(source) + '" target="_blank" rel="noreferrer">Open product source &#8599;</a></p>' : "",
         '</section>',
         '<section class="review-section"><h3>Checkout readiness</h3><div class="checkout-note' + (checkoutReady ? " is-ready" : "") + '">' + escapeHtml(checkoutMessage) + '</div></section>'
       ].join("");
@@ -658,7 +659,7 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
     function setCheckoutModal(open) {
       var modal = element("checkout-modal");
       modal.hidden = !open;
-      document.body.classList.toggle("has-modal", open);
+      syncModalLock();
       if (open) {
         var decisions = asArray(decisionBasket().items);
         var items = decisions.map(function (decision) { return asRecord(decision.item); });
@@ -666,6 +667,37 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
         element("checkout-modal-summary").textContent = (decisions.length === 1 ? "1 product" : decisions.length + " products") + " selected · " + total;
         window.setTimeout(function () { modal.querySelector("[data-action='close-checkout']").focus(); }, 0);
       }
+    }
+
+    function syncModalLock() {
+      document.body.classList.toggle("has-modal", !element("checkout-modal").hidden || !element("source-modal").hidden);
+    }
+
+    function sourceModalEnabled() {
+      return window.matchMedia && window.matchMedia("(max-width: 620px)").matches;
+    }
+
+    function openSourceModal(url, title, opener) {
+      if (!url) return;
+      var modal = element("source-modal");
+      state.sourceOpener = opener || null;
+      element("source-modal-title").textContent = title || "Product page";
+      element("source-modal-frame").setAttribute("src", url);
+      element("source-modal-external").setAttribute("href", url);
+      modal.hidden = false;
+      syncModalLock();
+      window.setTimeout(function () { modal.querySelector("[data-action='close-source']").focus(); }, 0);
+    }
+
+    function closeSourceModal() {
+      var modal = element("source-modal");
+      if (modal.hidden) return;
+      modal.hidden = true;
+      element("source-modal-frame").setAttribute("src", "about:blank");
+      element("source-modal-external").setAttribute("href", "#");
+      syncModalLock();
+      if (state.sourceOpener && typeof state.sourceOpener.focus === "function") state.sourceOpener.focus();
+      state.sourceOpener = null;
     }
 
     function openCheckoutPlaceholder() {
@@ -683,6 +715,13 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
       element("search").value = "";
       render(state.basket || { context: {}, items: [] });
     }
+
+    document.addEventListener("click", function (event) {
+      var sourceLink = event.target.closest("a[data-source-modal='true']");
+      if (!sourceLink || !sourceModalEnabled()) return;
+      event.preventDefault();
+      openSourceModal(sourceLink.href, sourceLink.getAttribute("data-source-title"), sourceLink);
+    });
 
     document.addEventListener("click", function (event) {
       var button = event.target.closest("button");
@@ -725,6 +764,8 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
         openCheckoutPlaceholder();
       } else if (action === "close-checkout") {
         setCheckoutModal(false);
+      } else if (action === "close-source") {
+        closeSourceModal();
       }
     });
 
@@ -732,8 +773,14 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
       if (event.target === event.currentTarget) setCheckoutModal(false);
     });
 
+    element("source-modal").addEventListener("click", function (event) {
+      if (event.target === event.currentTarget) closeSourceModal();
+    });
+
     document.addEventListener("keydown", function (event) {
-      if (event.key === "Escape" && !element("checkout-modal").hidden) setCheckoutModal(false);
+      if (event.key !== "Escape") return;
+      if (!element("source-modal").hidden) closeSourceModal();
+      else if (!element("checkout-modal").hidden) setCheckoutModal(false);
     });
 
     element("search").addEventListener("input", function (event) {

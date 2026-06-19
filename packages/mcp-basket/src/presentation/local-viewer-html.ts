@@ -190,6 +190,24 @@ export function renderBasketViewerHtml(options: { initialView?: "research" | "ma
       <button class="secondary-button" type="button" data-action="close-checkout">Back to main basket</button>
     </div>
   </div>
+  <div class="source-modal" id="source-modal" hidden role="dialog" aria-modal="true" aria-labelledby="source-modal-title">
+    <div class="source-modal-card">
+      <header class="source-modal-header">
+        <div>
+          <p class="eyebrow">Product source</p>
+          <h2 id="source-modal-title">Product page</h2>
+        </div>
+        <button class="modal-close" type="button" data-action="close-source" aria-label="Close product source">&#215;</button>
+      </header>
+      <div class="source-frame-shell">
+        <iframe id="source-modal-frame" title="Product source" src="about:blank" sandbox="allow-forms allow-popups allow-scripts" referrerpolicy="no-referrer"></iframe>
+      </div>
+      <footer class="source-modal-footer">
+        <span>Some stores block embedded product pages.</span>
+        <a class="source-link" id="source-modal-external" href="#" target="_blank" rel="noreferrer">Open in browser &#8599;</a>
+      </footer>
+    </div>
+  </div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script>${LOCAL_VIEWER_CLIENT}</script>
 </body>

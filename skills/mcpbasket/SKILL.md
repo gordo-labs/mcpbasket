@@ -57,6 +57,12 @@ MCPBASKET_STORE_PATH=.mcpbasket/basket.json
 
    For every online product, save the direct product page in `product.urls.product`. Also save it in `product.identifiers.sourceUrl` when known. Save the primary product image in `product.urls.image` or `product.images[0].url`; MCPBasket mirrors these compatible fields when one is provided. Do not substitute a search results link, merchant homepage, or unrelated image. If the product page or image cannot be observed, record that gap in evidence and keep the candidate in `needs_review`.
 
+   Validate every direct product link before saving it as verified:
+   - Open the URL with the available browser or web-navigation tool. Confirm that it resolves to a product-detail page and that the title, merchant, or selected variant matches the candidate.
+   - Record `product.evidence.linkValidation` with `status` (`verified`, `blocked`, or `unverified`), `checkedAt`, `observedUrl`, and `finalUrl` after redirects when known. Include a short reason if it is not verified.
+   - Never infer a valid product page from a search snippet, URL shape, merchant homepage, or a 404/empty/blocked response. Keep unverified candidates as `needs_review`; do not add them to the Main basket until the user explicitly accepts that uncertainty.
+   - Validate image URLs when an image is included. If the image does not load or cannot be tied to the product page, omit it and record the gap in evidence.
+
 4. Use `basket-list-products` after meaningful updates and report the local `viewerUrl` when the user is on the same machine as the agent.
    - The current MCP does not create a public basket URL.
    - Do not expose the local HTTP API or invent a remote sharing URL.
@@ -68,6 +74,7 @@ MCPBASKET_STORE_PATH=.mcpbasket/basket.json
    - This copies the approved product into the durable local decision basket; it remains when research context changes or the active basket is cleared.
    - `basket-set-context` with `startNewSearch: true` creates a saved search session for that response. Its candidate list and selections persist immediately and remain available when later searches start.
    - Pass `searchId` when selecting a product from a historical search. Use `basket-list-decision-basket` to review saved decisions and their originating searches. Removing a decision never removes its research candidate.
+   - Before adding a historical or current candidate, re-check `product.evidence.linkValidation`. Treat `blocked` and `unverified` as a review requirement, not checkout-ready evidence.
 
 ## MCP Tools
 

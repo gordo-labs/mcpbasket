@@ -22,7 +22,10 @@ test("viewer HTTP API validates input and persists a candidate", async () => {
     try {
       const researchPageResponse = await fetch(baseUrl);
       assert.equal(researchPageResponse.status, 200);
-      assert.match(await researchPageResponse.text(), /data-initial-view="research"/);
+      const researchPage = await researchPageResponse.text();
+      assert.match(researchPage, /data-initial-view="research"/);
+      assert.match(researchPage, /id="source-modal-frame"/);
+      assert.match(researchPage, /data-source-modal="true"/);
 
       const mainBasketPageResponse = await fetch(`${baseUrl}/basket`);
       assert.equal(mainBasketPageResponse.status, 200);

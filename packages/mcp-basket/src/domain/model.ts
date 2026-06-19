@@ -199,7 +199,7 @@ export const BASKET_MODEL_FIELD_GUIDE = [
   "product.selectedOptions for size/color/storage/etc.",
   "product.fulfillment for shipping, pickup, digital delivery, and destination constraints",
   "product.policy for returns, warranty, restrictions, subscription terms",
-  "product.evidence for query, sources, confidence, and why it matches the user intent",
+  "product.evidence for query, sources, confidence, why it matches the user intent, and linkValidation status/checkedAt/finalUrl",
   "checkout.provider, locator, supported, readiness before any real purchase",
   "decisionBasket.items for persistent final decisions and decisionBasket.searches for saved research contexts and candidate snapshots",
 ] as const;
