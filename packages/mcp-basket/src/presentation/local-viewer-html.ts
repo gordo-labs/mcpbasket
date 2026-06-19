@@ -1,4 +1,4 @@
-import { BASKET_MODEL_FIELD_GUIDE } from "./schema.js";
+import { BASKET_MODEL_FIELD_GUIDE } from "../domain/model.js";
 
 function safeJson(value: unknown): string {
   return JSON.stringify(value).replace(/</g, "\\u003c");

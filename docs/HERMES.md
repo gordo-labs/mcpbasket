@@ -10,6 +10,7 @@
   "args": ["/absolute/path/to/mcpbasket/packages/mcp-basket/build/index.js"],
   "env": {
     "MCPBASKET_PORT": "4377",
+    "MCPBASKET_BIND_HOST": "127.0.0.1",
     "MCPBASKET_HOSTED_VIEWER_URL": "https://mcpbasket.gordo.design"
   }
 }
@@ -29,3 +30,5 @@ If the browser cannot access localhost from the hosted page, expose the API thro
 ```text
 MCPBASKET_PUBLIC_HOST=https://your-tunnel.example.com
 ```
+
+Keep `MCPBASKET_BIND_HOST=127.0.0.1`; the tunnel should connect locally. Do not expose the basket API directly to an untrusted network because it accepts mutations.

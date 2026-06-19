@@ -9,6 +9,7 @@
   },
   "scripts": {
     "build": "tsc && chmod 755 build/index.js build/viewer.js",
+    "test": "npm run build && node --test test/*.test.mjs",
     "mcpbasket": "node ./build/index.js",
     "basket-viewer": "node ./build/viewer.js",
     "dev:basket-viewer": "npm run build && node ./build/viewer.js"
