@@ -1,0 +1,37 @@
+{
+  "name": "mcpbasket-mcp",
+  "version": "0.1.0",
+  "main": "index.js",
+  "type": "module",
+  "bin": {
+    "mcpbasket": "./build/index.js",
+    "mcpbasket-viewer": "./build/viewer.js"
+  },
+  "scripts": {
+    "build": "tsc && chmod 755 build/index.js build/viewer.js",
+    "mcpbasket": "node ./build/index.js",
+    "basket-viewer": "node ./build/viewer.js",
+    "dev:basket-viewer": "npm run build && node ./build/viewer.js"
+  },
+  "files": [
+    "build"
+  ],
+  "keywords": [
+    "modelcontextprotocol",
+    "commerce",
+    "agent",
+    "checkout"
+  ],
+  "author": "Gordo Design",
+  "license": "MIT",
+  "description": "Model Context Protocol server and viewer for a neutral agent pre-checkout basket",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.25.0",
+    "dotenv": "^16.4.5",
+    "zod": "3.25.23"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.1",
+    "typescript": "^5.8.3"
+  }
+}

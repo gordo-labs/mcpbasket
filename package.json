@@ -1,0 +1,25 @@
+{
+  "name": "mcpbasket",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Installable agent basket MCP, skill, and hosted preview web app.",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "build:mcp": "npm --workspace packages/mcp-basket run build",
+    "build:web": "npm --workspace apps/demo-web run build",
+    "dev:web": "npm --workspace apps/demo-web run dev",
+    "mcp": "npm --workspace packages/mcp-basket run mcpbasket",
+    "viewer": "npm --workspace packages/mcp-basket run basket-viewer"
+  },
+  "keywords": [
+    "mcp",
+    "agent-commerce",
+    "basket",
+    "checkout"
+  ],
+  "license": "MIT"
+}
