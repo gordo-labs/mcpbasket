@@ -31,8 +31,6 @@ Useful environment variables:
 ```bash
 MCPBASKET_PORT=4377
 MCPBASKET_STORE_PATH=.mcpbasket/basket.json
-MCPBASKET_PUBLIC_HOST=https://your-host.example.com
-MCPBASKET_HOSTED_VIEWER_URL=https://mcpbasket.gordo.design
 ```
 
 ## Workflow
@@ -52,9 +50,10 @@ MCPBASKET_HOSTED_VIEWER_URL=https://mcpbasket.gordo.design
    - Evidence: query, reason it matches, sources, observed timestamp, confidence.
    - Checkout: `locator`, `supported`, `readiness`; set `missing_locator` when unknown.
 
-4. Use `basket-list-products` after meaningful updates and share the viewer URL when the user needs to inspect the basket.
-   - Prefer `hostedViewerUrl` for humans.
-   - Use `viewerUrl` for the local raw viewer.
+4. Use `basket-list-products` after meaningful updates and report the local `viewerUrl` when the user is on the same machine as the agent.
+   - The current MCP does not create a public basket URL.
+   - Do not expose the local HTTP API or invent a remote sharing URL.
+   - A future remote service will publish authenticated basket views after it has been explicitly configured.
 
 5. Use `basket-export-checkout-line-items` only for approved or `ready_for_checkout` items with valid locators. It prepares data; it does not place an order.
 

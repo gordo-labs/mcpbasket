@@ -4,13 +4,19 @@ Model Context Protocol server for a neutral pre-checkout basket.
 
 The basket lets an agent collect product candidates while researching online stores, show those candidates in a local or hosted viewer, and only later export approved items into generic checkout line items.
 
+## Architecture
+
+The package is intentionally local-first. The domain and application layers have no knowledge of MCP, HTTP, Node processes, or a merchant integration. MCP and HTTP are adapters over the same `BasketService`; a file repository persists state with an atomic replace and a cross-process lock.
+
+See [`docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md) and [`docs/HTTP-API.md`](../../docs/HTTP-API.md) for the contract.
+
 ## What It Includes
 
 - MCP tools to set basket context, add products, review candidates, update status, remove items, and export checkout line items.
 - Local JSON persistence under `.mcpbasket/basket.json` by default.
-- Local HTTP API and built-in viewer on `http://localhost:4377`.
-- Optional hosted viewer URL support via `MCPBASKET_HOSTED_VIEWER_URL`.
+- Local HTTP API and built-in viewer for the machine running the agent.
 - Generic `lineItems` export for a separate checkout integration.
+- Loopback-only listener by default; remote access is deliberately outside this package.
 
 ## Install
 
@@ -44,8 +50,7 @@ Use the built entrypoint:
       "command": "node",
       "args": ["/absolute/path/to/mcpbasket/packages/mcp-basket/build/index.js"],
       "env": {
-        "MCPBASKET_PORT": "4377",
-        "MCPBASKET_HOSTED_VIEWER_URL": "https://mcpbasket.gordo.design"
+        "MCPBASKET_PORT": "4377"
       }
     }
   }
@@ -103,8 +108,9 @@ Minimal product candidate:
 ```bash
 MCPBASKET_PORT=4377
 MCPBASKET_STORE_PATH=.mcpbasket/basket.json
-MCPBASKET_PUBLIC_HOST=http://localhost:4377
-MCPBASKET_HOSTED_VIEWER_URL=https://mcpbasket.gordo.design
+MCPBASKET_BIND_HOST=127.0.0.1
 ```
 
 `basket-export-checkout-line-items` does not place an order. Use its output with a separately installed checkout integration after the user approves the exact purchase.
+
+This package does not provide remote storage, public basket URLs, mobile access, authentication, or payments. Those responsibilities belong to the planned remote service described in [`../../docs/REMOTE-SERVICE.md`](../../docs/REMOTE-SERVICE.md).
