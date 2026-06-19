@@ -112,8 +112,11 @@ Minimal product candidate:
 MCPBASKET_PORT=4377
 MCPBASKET_STORE_PATH=.mcpbasket/basket.json
 MCPBASKET_BIND_HOST=127.0.0.1
+MCPBASKET_VIEWER_URL=http://127.0.0.1:4377
 ```
+
+`MCPBASKET_BIND_HOST` controls the network interface where the local viewer listens. `MCPBASKET_VIEWER_URL` controls the URL returned to the agent and should be set independently when accessing the viewer through a private network, reverse proxy, or tunnel. For example, a Tailscale-only installation can bind to the machine's Tailscale IP and set the viewer URL to its MagicDNS hostname.
 
 `basket-export-checkout-line-items` does not place an order. Use its output with a separately installed checkout integration after the user approves the exact purchase.
 
-This package does not provide remote storage, public basket URLs, mobile access, authentication, or payments. Those responsibilities belong to the planned remote service described in [`../../docs/REMOTE-SERVICE.md`](../../docs/REMOTE-SERVICE.md).
+This package does not provide remote storage, public internet access, authentication, or payments. A device on the same private network can access the local viewer when the operator explicitly exposes it. Remote storage, public basket URLs, user authentication, and payments belong to the planned remote service described in [`../../docs/REMOTE-SERVICE.md`](../../docs/REMOTE-SERVICE.md).
