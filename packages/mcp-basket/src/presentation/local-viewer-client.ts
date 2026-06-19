@@ -4,7 +4,7 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
       basket: null,
       selectedId: null,
       selectedSearchId: null,
-      view: "research",
+      view: document.body.getAttribute("data-initial-view") === "main-basket" ? "main-basket" : "research",
       filter: "all",
       search: "",
       sort: "recommended",
@@ -249,14 +249,16 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
     }
 
     function setWorkspaceView(view) {
-      state.view = view === "decisions" ? "decisions" : "research";
+      state.view = view === "main-basket" ? "main-basket" : "research";
       element("research-view").hidden = state.view !== "research";
-      element("decisions-view").hidden = state.view !== "decisions";
-      document.querySelectorAll(".workspace-tab").forEach(function (tab) {
-        var active = tab.getAttribute("data-view") === state.view;
-        tab.classList.toggle("is-active", active);
-        tab.setAttribute("aria-selected", String(active));
-      });
+      element("main-basket-view").hidden = state.view !== "main-basket";
+      element("mobile-checkout").hidden = state.view !== "main-basket";
+      var basketLink = element("main-basket-link");
+      basketLink.classList.toggle("is-active", state.view === "main-basket");
+      if (state.view === "main-basket") basketLink.setAttribute("aria-current", "page");
+      else basketLink.removeAttribute("aria-current");
+      document.body.classList.toggle("is-main-basket", state.view === "main-basket");
+      document.title = state.view === "main-basket" ? "Main basket | MCPBasket" : "MCPBasket";
     }
 
     function updateTabs(items) {
@@ -303,7 +305,7 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
       });
     }
 
-    function renderCandidate(item) {
+    function renderCandidate(item, searchId) {
       var product = asRecord(item.product);
       var price = priceRecord(item);
       var availability = availabilityInfo(item);
@@ -321,6 +323,10 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
       var sourceMarkup = source
         ? '<a class="source-link" href="' + escapeHtml(source) + '" target="_blank" rel="noreferrer">View source &#8599;</a>'
         : '<span class="source-link">No source</span>';
+      var existingDecision = finalDecisionFor(item, searchId);
+      var mainBasketAction = existingDecision
+        ? '<span class="in-main-basket">In main basket</span>'
+        : '<button class="add-to-basket-button" type="button" data-action="add-to-main-basket" data-id="' + escapeHtml(item.id) + '" data-search-id="' + escapeHtml(searchId || "") + '">Add to basket</button>';
       var selected = item.id === state.selectedId ? " is-selected" : "";
       return [
         '<article class="candidate' + selected + '" data-id="' + escapeHtml(item.id) + '">',
@@ -337,13 +343,20 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
           '</button>',
           '<div class="candidate-side">',
             '<div><div class="candidate-price">' + escapeHtml(formatMoney(price.amount, price.currency)) + '</div>' + listPrice + '</div>',
+            mainBasketAction,
             sourceMarkup,
           '</div>',
         '</article>'
       ].join("");
     }
 
-    function renderDecisionItem(decision) {
+    function searchNameFor(decision) {
+      var search = savedSearches().find(function (candidate) { return candidate.id === decision.sourceSearchId; });
+      var context = asRecord(search && search.context);
+      return displayText(context.title, displayText(context.intent, "Saved research"));
+    }
+
+    function renderMainBasketItem(decision) {
       var item = asRecord(decision.item);
       var product = asRecord(item.product);
       var price = priceRecord(item);
@@ -355,17 +368,21 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
       var visualMarkup = source
         ? '<a class="candidate-visual source-image-link" href="' + escapeHtml(source) + '" target="_blank" rel="noreferrer" aria-label="Open product page for ' + escapeHtml(displayText(product.title, "product")) + '">' + imageMarkup + '</a>'
         : '<div class="candidate-visual">' + imageMarkup + '</div>';
+      var selectedOptions = asArray(product.selectedOptions).map(function (option) {
+        var record = asRecord(option);
+        return displayText(record.label || record.name, "Option") + ": " + displayText(record.value, "Selected");
+      }).join(" · ");
       return [
-        '<article class="decision-card">',
+        '<article class="main-basket-item">',
           visualMarkup,
-          '<div>',
+          '<div class="main-basket-item-copy">',
             '<h3>' + escapeHtml(displayText(product.title, "Untitled product")) + '</h3>',
-            '<p>' + escapeHtml(merchantName(item)) + ' &middot; Selected ' + escapeHtml(formatTime(decision.selectedAt)) + '</p>',
-            '<span class="pill status-approved">Final decision</span>',
+            '<p>' + escapeHtml(merchantName(item)) + (selectedOptions ? ' &middot; ' + escapeHtml(selectedOptions) : "") + '</p>',
+            '<span class="main-basket-item-meta">From ' + escapeHtml(searchNameFor(decision)) + ' &middot; Added ' + escapeHtml(formatTime(decision.selectedAt)) + '</span>',
           '</div>',
-          '<div class="decision-card-side">',
-            '<div class="decision-card-price">' + escapeHtml(formatMoney(price.amount, price.currency)) + '</div>',
-            '<div class="decision-card-actions">',
+          '<div class="main-basket-item-side">',
+            '<div class="main-basket-item-price">' + escapeHtml(formatMoney(price.amount, price.currency)) + '</div>',
+            '<div class="main-basket-item-actions">',
               source ? '<a class="source-link" href="' + escapeHtml(source) + '" target="_blank" rel="noreferrer">Open &#8599;</a>' : "",
               '<button class="remove-button" type="button" data-action="remove-decision" data-id="' + escapeHtml(decision.id) + '">Remove</button>',
             '</div>',
@@ -394,17 +411,33 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
       }).join("");
     }
 
-    function renderDecisionWorkspace() {
+    function renderMainBasketWorkspace() {
       var decisions = asArray(decisionBasket().items);
       var searches = savedSearches();
-      element("decision-count").textContent = String(decisions.length);
-      element("decision-total").textContent = decisions.length === 1 ? "1 product" : decisions.length + " products";
-      element("decision-description").textContent = decisions.length
+      var items = decisions.map(function (decision) { return asRecord(decision.item); });
+      var merchantNames = new Set(items.map(merchantName).filter(function (name) { return name !== "Unverified merchant"; }));
+      var productCountLabel = decisions.length === 1 ? "1 product" : decisions.length + " products";
+      var total = totalText(items);
+      var checkoutButtons = document.querySelectorAll("[data-action='checkout']");
+
+      element("main-basket-count").textContent = String(decisions.length);
+      element("main-basket-product-count").textContent = String(decisions.length);
+      element("main-basket-search-count").textContent = String(searches.length);
+      element("main-basket-merchant-count").textContent = String(merchantNames.size);
+      element("main-basket-total").textContent = total;
+      element("main-basket-description").textContent = decisions.length
         ? "Products selected across " + searches.length + " saved research sessions."
         : "Products selected across every saved research session.";
-      element("decision-items").innerHTML = decisions.length
-        ? decisions.map(renderDecisionItem).join("")
-        : '<div class="empty-state"><h3>No final decisions yet</h3><p>Open a saved research session, review a candidate, and add it here when it is selected for a future purchase.</p></div>';
+      element("main-basket-items").innerHTML = decisions.length
+        ? decisions.map(renderMainBasketItem).join("")
+        : '<div class="empty-state"><h3>Your main basket is empty</h3><p>Use the Add to basket button on a researched product to keep it here across future searches.</p></div>';
+      element("checkout-panel-detail").textContent = decisions.length
+        ? productCountLabel + " selected from " + searches.length + " research sessions."
+        : "Select products from research to start a checkout.";
+      element("checkout-panel-total").textContent = total;
+      element("mobile-checkout-count").textContent = productCountLabel;
+      element("mobile-checkout-total").textContent = total;
+      checkoutButtons.forEach(function (button) { button.disabled = decisions.length === 0; });
       renderSearchHistory(decisions, searches);
     }
 
@@ -461,9 +494,9 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
           ? "A locator exists but the candidate is not approved for checkout."
           : "No checkout locator is captured. This remains research only.";
       var existingDecision = finalDecisionFor(item, searchId);
-      var decisionAction = existingDecision
-        ? '<span class="decision-saved">Saved to final decisions</span>'
-        : '<button class="decision-button" type="button" data-action="save-decision" data-id="' + escapeHtml(item.id) + '" data-search-id="' + escapeHtml(searchId || "") + '">Add to final decisions</button>';
+      var basketStatus = existingDecision
+        ? '<span class="in-main-basket">In main basket</span>'
+        : '<span class="basket-hint">Use Add to basket in the product list.</span>';
       var stageControl = isActiveSearch
         ? '<label class="stage-control"><span>Research stage</span><select data-action="status" data-id="' + escapeHtml(item.id) + '" aria-label="Research stage for ' + escapeHtml(displayText(product.title, "product")) + '">' + selectOptions(item.status) + '</select></label>'
         : '<div class="stage-control"><span>Saved research stage</span><strong class="pill ' + statusClass(item.status) + '">' + escapeHtml(statusLabel(item.status)) + '</strong></div>';
@@ -478,7 +511,7 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
         '</div>',
         '<div class="review-actions">',
           stageControl,
-          '<div class="review-action-buttons">', decisionAction,
+          '<div class="review-action-buttons">', basketStatus,
           isActiveSearch ? '<button class="remove-button" type="button" data-action="remove" data-id="' + escapeHtml(item.id) + '">Remove</button>' : "",
           '</div>',
         '</div>',
@@ -523,7 +556,7 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
       element("stat-total-detail").textContent = Object.keys(totalByCurrency(items)).length ? "Across priced options" : "Prices not captured";
       updateTabs(items);
       renderSearchNavigator();
-      renderDecisionWorkspace();
+      renderMainBasketWorkspace();
       setWorkspaceView(state.view);
 
       var filtered = sortedItems(items.filter(matchesFilter).filter(matchesSearch));
@@ -531,7 +564,7 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
         ? (items.length === 1 ? "1 product in this basket" : items.length + " products in this basket")
         : (filtered.length === 1 ? "1 matching product" : filtered.length + " matching products");
       element("items").innerHTML = filtered.length
-        ? filtered.map(renderCandidate).join("")
+        ? filtered.map(function (item) { return renderCandidate(item, search && search.id); }).join("")
         : '<div class="empty-state"><h3>No matching products</h3><p>Try a different search or filter. New candidates added by the agent will appear here automatically.</p></div>';
       renderInspector(
         items.find(function (item) { return item.id === state.selectedId; }) || null,
@@ -595,33 +628,52 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
       }
     }
 
-    async function saveFinalDecision(id, searchId) {
-      if (!window.confirm("Add this product to the permanent final decision basket?")) return;
+    async function addToMainBasket(id, searchId) {
       try {
         var response = await fetch("/api/decisions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ itemId: id, searchId: searchId || undefined, confirm: true })
         });
-        if (!response.ok) throw new Error("The final decision could not be saved.");
-        state.view = "decisions";
-        showToast("Saved to final decisions.", false);
+        if (!response.ok) throw new Error("The product could not be added to the main basket.");
+        showToast("Added to main basket.", false);
         await loadBasket();
       } catch (error) {
-        showToast(error instanceof Error ? error.message : "The final decision could not be saved.", true);
+        showToast(error instanceof Error ? error.message : "The product could not be added to the main basket.", true);
       }
     }
 
     async function removeFinalDecision(id) {
-      if (!window.confirm("Remove this product from the permanent final decision basket?")) return;
+      if (!window.confirm("Remove this product from the main basket?")) return;
       try {
         var response = await fetch("/api/decisions/" + encodeURIComponent(id), { method: "DELETE" });
-        if (!response.ok) throw new Error("The final decision could not be removed.");
-        showToast("Removed from final decisions.", false);
+        if (!response.ok) throw new Error("The product could not be removed from the main basket.");
+        showToast("Removed from main basket.", false);
         await loadBasket();
       } catch (error) {
-        showToast(error instanceof Error ? error.message : "The final decision could not be removed.", true);
+        showToast(error instanceof Error ? error.message : "The product could not be removed from the main basket.", true);
       }
+    }
+
+    function setCheckoutModal(open) {
+      var modal = element("checkout-modal");
+      modal.hidden = !open;
+      document.body.classList.toggle("has-modal", open);
+      if (open) {
+        var decisions = asArray(decisionBasket().items);
+        var items = decisions.map(function (decision) { return asRecord(decision.item); });
+        var total = totalText(items);
+        element("checkout-modal-summary").textContent = (decisions.length === 1 ? "1 product" : decisions.length + " products") + " selected · " + total;
+        window.setTimeout(function () { modal.querySelector("[data-action='close-checkout']").focus(); }, 0);
+      }
+    }
+
+    function openCheckoutPlaceholder() {
+      if (!asArray(decisionBasket().items).length) {
+        showToast("Add a product to the main basket before checkout.", true);
+        return;
+      }
+      setCheckoutModal(true);
     }
 
     function selectSavedSearch(searchId) {
@@ -637,10 +689,6 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
       if (!button) return;
       if (button.id === "refresh") {
         loadBasket();
-        return;
-      }
-      if (button.classList.contains("workspace-tab")) {
-        setWorkspaceView(button.getAttribute("data-view"));
         return;
       }
       if (button.id === "previous-search" || button.id === "next-search") {
@@ -666,14 +714,26 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
         render(state.basket || { context: {}, items: [] });
       } else if (action === "remove") {
         removeItem(button.getAttribute("data-id"));
-      } else if (action === "save-decision") {
-        saveFinalDecision(button.getAttribute("data-id"), button.getAttribute("data-search-id"));
+      } else if (action === "add-to-main-basket") {
+        addToMainBasket(button.getAttribute("data-id"), button.getAttribute("data-search-id"));
       } else if (action === "remove-decision") {
         removeFinalDecision(button.getAttribute("data-id"));
       } else if (action === "open-search") {
         state.view = "research";
         selectSavedSearch(button.getAttribute("data-search-id"));
+      } else if (action === "checkout") {
+        openCheckoutPlaceholder();
+      } else if (action === "close-checkout") {
+        setCheckoutModal(false);
       }
+    });
+
+    element("checkout-modal").addEventListener("click", function (event) {
+      if (event.target === event.currentTarget) setCheckoutModal(false);
+    });
+
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape" && !element("checkout-modal").hidden) setCheckoutModal(false);
     });
 
     element("search").addEventListener("input", function (event) {

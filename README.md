@@ -1,6 +1,6 @@
 # MCPBasket
 
-MCPBasket is a local-first pre-purchase workspace for agents. It records each research session, lets a user select products into one durable final-decision basket across searches, and prepares candidates before a human-approved checkout handled by another integration.
+MCPBasket is a local-first pre-purchase workspace for agents. It records each research response as a durable product list, lets a user selectively add products to one persistent Main basket across searches, and prepares candidates before a human-approved checkout handled by another integration.
 
 It never creates an order.
 
@@ -46,6 +46,8 @@ npm run mcp
 ```
 
 The local viewer command prints the loopback URL for the machine running the agent. It is the MVP inspection surface; it is not a public sharing mechanism.
+
+The research workspace is available at `/`. The persistent Main basket is available at `/basket`: it keeps selected products across every saved search and presents a Crossmint checkout placeholder. It does not create an order or transmit payment details.
 
 ## Integrations
 

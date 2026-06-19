@@ -81,3 +81,37 @@ test("BasketService retains final decisions and search history across new resear
     assert.equal(restored.decisionBasket.searches[1].items[0].status, "approved");
   });
 });
+
+test("BasketService records a distinct historical list when research explicitly starts again", async () => {
+  await withTemporaryStore(async (storePath) => {
+    let tick = 0;
+    const ids = ["search-one", "product-one", "search-two", "product-two"];
+    const service = new BasketService(new FileBasketRepository(storePath), {
+      clock: () => `2026-06-19T02:00:0${tick++}.000Z`,
+      idGenerator: () => ids.shift() || "fallback-id",
+    });
+
+    await service.setContext({
+      title: "Studio speakers",
+      intent: "Find compact monitors for a desk",
+      currency: "EUR",
+      startNewSearch: true,
+    });
+    await service.upsertItem({ product: { title: "First speaker" } });
+
+    await service.setContext({
+      title: "Studio speakers",
+      intent: "Find compact monitors for a desk",
+      currency: "EUR",
+      startNewSearch: true,
+    });
+    await service.upsertItem({ product: { title: "Second speaker" } });
+
+    const restored = await service.load();
+    assert.equal(restored.decisionBasket.searches.length, 2);
+    assert.deepEqual(
+      restored.decisionBasket.searches.map((search) => search.items.map((item) => item.product.title)),
+      [["First speaker"], ["Second speaker"]],
+    );
+  });
+});

@@ -33,11 +33,11 @@ function sendJson(response: ServerResponse, statusCode: number, body: unknown): 
   response.end(`${JSON.stringify(body, null, 2)}\n`);
 }
 
-function sendHtml(response: ServerResponse): void {
+function sendHtml(response: ServerResponse, initialView: "research" | "main-basket" = "research"): void {
   setBaseHeaders(response);
   response.statusCode = 200;
   response.setHeader("Content-Type", "text/html; charset=utf-8");
-  response.end(renderBasketViewerHtml());
+  response.end(renderBasketViewerHtml({ initialView }));
 }
 
 async function readJson(request: IncomingMessage): Promise<unknown> {
@@ -97,6 +97,11 @@ export async function createBasketViewerServer(
 
       if (request.method === "GET" && (pathname === "/" || pathname === "/index.html")) {
         sendHtml(response);
+        return;
+      }
+
+      if (request.method === "GET" && pathname === "/basket") {
+        sendHtml(response, "main-basket");
         return;
       }
 

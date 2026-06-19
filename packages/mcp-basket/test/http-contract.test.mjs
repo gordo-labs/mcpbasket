@@ -20,6 +20,14 @@ test("viewer HTTP API validates input and persists a candidate", async () => {
     const baseUrl = `http://127.0.0.1:${port}`;
 
     try {
+      const researchPageResponse = await fetch(baseUrl);
+      assert.equal(researchPageResponse.status, 200);
+      assert.match(await researchPageResponse.text(), /data-initial-view="research"/);
+
+      const mainBasketPageResponse = await fetch(`${baseUrl}/basket`);
+      assert.equal(mainBasketPageResponse.status, 200);
+      assert.match(await mainBasketPageResponse.text(), /data-initial-view="main-basket"/);
+
       const createResponse = await fetch(`${baseUrl}/api/items`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

@@ -61,7 +61,7 @@ export function mergeBasketContext(
   input: BasketContextInput,
 ): Basket["context"] {
   const parsed = BasketContextInputSchema.parse(input);
-  const { resetMissingFields, ...nextContext } = parsed;
+  const { resetMissingFields, startNewSearch: _startNewSearch, ...nextContext } = parsed;
   return resetMissingFields ? nextContext : { ...current, ...nextContext };
 }
 
@@ -74,7 +74,7 @@ function searchFingerprint(context: Basket["context"]): string | undefined {
 export function beginResearchSession(
   basket: Pick<Basket, "context" | "items" | "activeSearchId" | "decisionBasket">,
   context: Basket["context"],
-  options: { clock?: Clock; idGenerator?: IdGenerator } = {},
+  options: { clock?: Clock; idGenerator?: IdGenerator; forceNewSession?: boolean } = {},
 ): { decisionBasket: DecisionBasket; activeSearchId?: string; items: CartItem[] } {
   const fingerprint = searchFingerprint(context);
   if (fingerprint == null) {
@@ -93,7 +93,7 @@ export function beginResearchSession(
   const active = activeIndex >= 0 ? decisionBasket.searches[activeIndex] : undefined;
   const snapshotItems = basket.items.length === 0 && active != null && active.items.length > 0 ? active.items : basket.items;
 
-  if (active != null && searchFingerprint(active.context) === fingerprint) {
+  if (!options.forceNewSession && active != null && searchFingerprint(active.context) === fingerprint) {
     const searches = [...decisionBasket.searches];
     searches[activeIndex] = { ...active, context, items: snapshotItems, updatedAt: now };
     return {
@@ -104,7 +104,7 @@ export function beginResearchSession(
   }
 
   const searches = [...decisionBasket.searches];
-  if (active == null && searchFingerprint(basket.context) === fingerprint) {
+  if (!options.forceNewSession && active == null && searchFingerprint(basket.context) === fingerprint) {
     const matchingIndex = searches.findIndex((search) => searchFingerprint(search.context) === fingerprint);
     if (matchingIndex >= 0) {
       searches[matchingIndex] = { ...searches[matchingIndex], context, items: basket.items, updatedAt: now };

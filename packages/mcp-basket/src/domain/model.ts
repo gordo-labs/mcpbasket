@@ -169,6 +169,7 @@ export const BasketSchema = z
 
 export const BasketContextInputSchema = BasketContextSchema.extend({
   resetMissingFields: z.boolean().optional(),
+  startNewSearch: z.boolean().optional().describe("Create a new saved research session even when title and intent match the active search."),
 }).passthrough();
 
 export type CandidateStatus = z.infer<typeof CandidateStatusSchema>;

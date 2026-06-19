@@ -43,6 +43,7 @@ MCPBASKET_STORE_PATH=.mcpbasket/basket.json
    - `title`: short basket name
    - `intent`: user request and decision criteria
    - `currency`, `locale`, `destinationCountry`, `constraints`, `targetStores` when known
+   - Set `startNewSearch: true` once for every new agent research response. This creates a durable historical list immediately, even when its title or intent resembles a previous search. Do not set it while merely enriching the same response's candidate list.
 
 2. During research, save each plausible product with `basket-upsert-product`.
    - Add candidates early; refine fields as evidence improves.
@@ -65,7 +66,7 @@ MCPBASKET_STORE_PATH=.mcpbasket/basket.json
 
 6. When the user explicitly chooses a product as a final buying decision, call `basket-add-to-decision-basket` with `confirm: true`.
    - This copies the approved product into the durable local decision basket; it remains when research context changes or the active basket is cleared.
-   - `basket-set-context` creates a saved search session per distinct title or intent. Its candidate snapshot and selections persist when the next search starts.
+   - `basket-set-context` with `startNewSearch: true` creates a saved search session for that response. Its candidate list and selections persist immediately and remain available when later searches start.
    - Pass `searchId` when selecting a product from a historical search. Use `basket-list-decision-basket` to review saved decisions and their originating searches. Removing a decision never removes its research candidate.
 
 ## MCP Tools

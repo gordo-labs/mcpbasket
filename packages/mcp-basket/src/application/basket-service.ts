@@ -1,6 +1,7 @@
 import {
   addDecisionBasketItem,
   beginResearchSession,
+  BasketContextInputSchema,
   CandidateStatusSchema,
   CartItemInputSchema,
   decisionBasketFor,
@@ -62,10 +63,12 @@ export class BasketService {
     return this.repository.runExclusive(async () => {
       const basket = await this.loadOrCreate();
       const now = this.now();
-      const context = mergeBasketContext(basket.context, input);
+      const parsedInput = BasketContextInputSchema.parse(input);
+      const context = mergeBasketContext(basket.context, parsedInput);
       const session = beginResearchSession(basket, context, {
         clock: () => now,
         idGenerator: this.dependencies.idGenerator,
+        forceNewSession: parsedInput.startNewSearch === true,
       });
       return this.repository.write({
         ...basket,
