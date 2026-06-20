@@ -2,10 +2,12 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
   (function () {
     var state = {
       basket: null,
-      selectedId: document.body.getAttribute("data-initial-product-id"),
+      selectedId: null,
       selectedSearchId: document.body.getAttribute("data-initial-search-id"),
-      view: document.body.getAttribute("data-initial-view") === "product-detail"
-        ? "product-detail"
+      sourceUrl: document.body.getAttribute("data-initial-source-url"),
+      sourceTitle: document.body.getAttribute("data-initial-source-title"),
+      view: document.body.getAttribute("data-initial-view") === "source-page"
+        ? "source-page"
         : document.body.getAttribute("data-initial-view") === "main-basket"
         ? "main-basket"
         : document.body.getAttribute("data-initial-view") === "searches" ? "searches" : "research",
@@ -290,10 +292,10 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
     }
 
     function setWorkspaceView(view) {
-      state.view = view === "main-basket" || view === "searches" || view === "product-detail" ? view : "research";
+      state.view = view === "main-basket" || view === "searches" || view === "source-page" ? view : "research";
       element("research-view").hidden = state.view !== "research";
       element("searches-view").hidden = state.view !== "searches";
-      element("product-detail-view").hidden = state.view !== "product-detail";
+      element("source-page-view").hidden = state.view !== "source-page";
       element("main-basket-view").hidden = state.view !== "main-basket";
       element("mobile-checkout").hidden = state.view !== "main-basket";
       var basketLink = element("main-basket-link");
@@ -306,11 +308,11 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
       else searchesLink.removeAttribute("aria-current");
       document.body.classList.toggle("is-main-basket", state.view === "main-basket");
       document.body.classList.toggle("is-searches", state.view === "searches");
-      document.body.classList.toggle("is-product-detail", state.view === "product-detail");
+      document.body.classList.toggle("is-source-page", state.view === "source-page");
       document.title = state.view === "main-basket"
         ? "Main basket | MCPBasket"
         : state.view === "searches" ? "Saved searches | MCPBasket"
-          : state.view === "product-detail" ? "Product detail | MCPBasket" : "MCPBasket";
+          : state.view === "source-page" ? "Product source | MCPBasket" : "MCPBasket";
     }
 
     function updateTabs(items) {
@@ -627,20 +629,15 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
       element("inspector-content").innerHTML = productDetailMarkup(item, searchId, isActiveSearch, "review-heading", false);
     }
 
-    function renderProductDetailWorkspace(item, search) {
-      var searchName = searchTitle(search, "Saved research");
-      element("product-detail-path").textContent = searchName;
-      if (!item) {
-        element("product-detail-content").innerHTML = '<div class="empty-state"><h2 id="product-page-title">Product not available</h2><p>This candidate is not present in the selected research session. Return to the saved search and choose another product.</p></div>';
-        return;
+    function renderSourcePage() {
+      var source = httpUrl(state.sourceUrl);
+      element("source-page-title").textContent = state.sourceTitle || "Product source";
+      element("source-page-frame").setAttribute("src", source || "about:blank");
+      element("source-page-external").setAttribute("href", source || "#");
+      element("source-page-external").hidden = !source;
+      if (!source) {
+        element("source-page-title").textContent = "Source unavailable";
       }
-      element("product-detail-content").innerHTML = productDetailMarkup(
-        item,
-        search && search.id,
-        selectedSearchIsActive(),
-        "product-page-title",
-        true,
-      );
     }
 
     function render(basket) {
@@ -671,10 +668,7 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
       renderSearchNavigator();
       renderSearchesWorkspace();
       renderMainBasketWorkspace();
-      renderProductDetailWorkspace(
-        items.find(function (item) { return item.id === state.selectedId; }) || null,
-        search,
-      );
+      renderSourcePage();
       setWorkspaceView(state.view);
 
       var filtered = sortedItems(items.filter(matchesFilter).filter(matchesSearch));
@@ -862,12 +856,11 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
       window.location.assign("/?search=" + encodeURIComponent(searchId));
     }
 
-    function openProductDetailPage(searchId, productId) {
-      if (!productId) return;
+    function openSourcePage(url, title) {
       var query = new URLSearchParams();
-      if (searchId) query.set("search", searchId);
-      query.set("product", productId);
-      window.location.assign("/?" + query.toString());
+      query.set("url", url);
+      if (title) query.set("title", title);
+      window.location.assign("/source?" + query.toString());
     }
 
     function returnToPreviousView(fallbackPath) {
@@ -887,7 +880,11 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
       var sourceLink = event.target.closest("a[data-source-modal='true']");
       if (!sourceLink) return;
       event.preventDefault();
-      openSourceModal(sourceLink.href, sourceLink.getAttribute("data-source-title"), sourceLink);
+      if (productModalEnabled()) {
+        openSourceModal(sourceLink.href, sourceLink.getAttribute("data-source-title"), sourceLink);
+      } else {
+        openSourcePage(sourceLink.href, sourceLink.getAttribute("data-source-title"));
+      }
     });
 
     document.addEventListener("click", function (event) {
@@ -922,8 +919,7 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
           var search = selectedSearch();
           openProductModal(selectedItem, search && search.id, selectedSearchIsActive(), button);
         } else {
-          var activeResearch = selectedSearch();
-          openProductDetailPage(activeResearch && activeResearch.id, state.selectedId);
+          render(state.basket || { context: {}, items: [] });
         }
       } else if (action === "remove") {
         removeItem(button.getAttribute("data-id"));
@@ -943,9 +939,8 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
         closeProductModal();
       } else if (action === "go-back") {
         returnToPreviousView();
-      } else if (action === "go-back-product") {
-        var activeSearch = selectedSearch();
-        returnToPreviousView(activeSearch && activeSearch.id ? "/?search=" + encodeURIComponent(activeSearch.id) : "/searches");
+      } else if (action === "go-back-source") {
+        returnToPreviousView("/");
       }
     });
 

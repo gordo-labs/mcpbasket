@@ -35,13 +35,13 @@ test("viewer HTTP API validates input and persists a candidate", async () => {
       assert.match(mainBasketPage, /id="searches-view"[^>]*hidden/);
       assert.match(mainBasketPage, /id="main-basket-view" aria-labelledby/);
 
-      const productPageResponse = await fetch(`${baseUrl}/?search=search-1&product=product-1`);
-      assert.equal(productPageResponse.status, 200);
-      const productPage = await productPageResponse.text();
-      assert.match(productPage, /data-initial-view="product-detail"/);
-      assert.match(productPage, /data-initial-search-id="search-1"/);
-      assert.match(productPage, /data-initial-product-id="product-1"/);
-      assert.match(productPage, /id="product-detail-view" aria-labelledby/);
+      const sourcePageResponse = await fetch(`${baseUrl}/source?url=https%3A%2F%2Fexample.com%2Fproduct&title=Example%20product`);
+      assert.equal(sourcePageResponse.status, 200);
+      const sourcePage = await sourcePageResponse.text();
+      assert.match(sourcePage, /data-initial-view="source-page"/);
+      assert.ok(sourcePage.includes('data-initial-source-url="https://example.com/product"'));
+      assert.match(sourcePage, /data-initial-source-title="Example product"/);
+      assert.match(sourcePage, /id="source-page-view" aria-labelledby/);
 
       const searchesPageResponse = await fetch(`${baseUrl}/searches`);
       assert.equal(searchesPageResponse.status, 200);
