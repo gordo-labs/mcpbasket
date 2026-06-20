@@ -193,13 +193,13 @@ export type Money = Record<string, unknown> & {
 export const BASKET_MODEL_FIELD_GUIDE = [
   "product.title, brand, category, condition, description",
   "product.merchant.name, domain, url, platform, sellerName",
-  "product.identifiers.sourceUrl, canonicalUrl, sku, asin, gtin, variantId, productLocator",
+  "product.identifiers.sourceUrl and product.urls.product only when linkValidation is verified; otherwise evidence.linkValidation.observedUrl",
   "product.price.current, list, discount, shipping, taxEstimate, totalEstimate",
   "product.availability.status, quantityAvailable, limitPerCustomer",
   "product.selectedOptions for size/color/storage/etc.",
   "product.fulfillment for shipping, pickup, digital delivery, and destination constraints",
   "product.policy for returns, warranty, restrictions, subscription terms",
-  "product.evidence for query, sources, confidence, why it matches the user intent, and linkValidation status/checkedAt/finalUrl",
+  "product.evidence for query, sources, confidence, why it matches the user intent, and linkValidation status/checkedAt/observedUrl/finalUrl",
   "checkout.provider, locator, supported, readiness before any real purchase",
   "decisionBasket.items for persistent final decisions and decisionBasket.searches for saved research contexts and candidate snapshots",
 ] as const;

@@ -29,7 +29,18 @@ test("viewer HTTP API validates input and persists a candidate", async () => {
 
       const mainBasketPageResponse = await fetch(`${baseUrl}/basket`);
       assert.equal(mainBasketPageResponse.status, 200);
-      assert.match(await mainBasketPageResponse.text(), /data-initial-view="main-basket"/);
+      const mainBasketPage = await mainBasketPageResponse.text();
+      assert.match(mainBasketPage, /data-initial-view="main-basket"/);
+      assert.match(mainBasketPage, /id="research-view"[^>]*hidden/);
+      assert.match(mainBasketPage, /id="searches-view"[^>]*hidden/);
+      assert.match(mainBasketPage, /id="main-basket-view" aria-labelledby/);
+
+      const searchesPageResponse = await fetch(`${baseUrl}/searches`);
+      assert.equal(searchesPageResponse.status, 200);
+      const searchesPage = await searchesPageResponse.text();
+      assert.match(searchesPage, /data-initial-view="searches"/);
+      assert.match(searchesPage, /id="search-page-items"/);
+      assert.match(searchesPage, /id="product-modal"/);
 
       const createResponse = await fetch(`${baseUrl}/api/items`, {
         method: "POST",

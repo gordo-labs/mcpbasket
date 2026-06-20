@@ -3,13 +3,16 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
     var state = {
       basket: null,
       selectedId: null,
-      selectedSearchId: null,
-      view: document.body.getAttribute("data-initial-view") === "main-basket" ? "main-basket" : "research",
+      selectedSearchId: document.body.getAttribute("data-initial-search-id"),
+      view: document.body.getAttribute("data-initial-view") === "main-basket"
+        ? "main-basket"
+        : document.body.getAttribute("data-initial-view") === "searches" ? "searches" : "research",
       filter: "all",
       search: "",
       sort: "recommended",
       toastTimer: null,
-      sourceOpener: null
+      sourceOpener: null,
+      productOpener: null
     };
 
     var STATUS_LABELS = {
@@ -107,18 +110,38 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
       return displayText(merchant.name || merchant.domain, "Unverified merchant");
     }
 
-    function sourceUrl(item) {
-      var product = asRecord(item.product);
-      var urls = asRecord(product.urls);
-      var identifiers = asRecord(product.identifiers);
-      var candidate = urls.product || urls.canonical || identifiers.sourceUrl || identifiers.canonicalUrl;
-      if (typeof candidate !== "string") return "";
+    function httpUrl(value) {
+      if (typeof value !== "string") return "";
       try {
-        var url = new URL(decodeHtmlEntities(candidate));
+        var url = new URL(decodeHtmlEntities(value));
         return url.protocol === "https:" || url.protocol === "http:" ? url.href : "";
       } catch (_) {
         return "";
       }
+    }
+
+    function capturedSourceUrl(item) {
+      var product = asRecord(item.product);
+      var urls = asRecord(product.urls);
+      var identifiers = asRecord(product.identifiers);
+      var candidate = urls.product || urls.canonical || identifiers.sourceUrl || identifiers.canonicalUrl;
+      return httpUrl(candidate);
+    }
+
+    function linkValidationInfo(item) {
+      var product = asRecord(item.product);
+      var evidence = asRecord(product.evidence);
+      var validation = asRecord(evidence.linkValidation);
+      var source = capturedSourceUrl(item);
+      var status = typeof validation.status === "string" ? validation.status : "unverified";
+      if (!source) return { url: "", label: "No source", className: "source-missing" };
+      if (status === "verified") return { url: source, label: "Source verified", className: "source-verified" };
+      if (status === "blocked") return { url: "", label: "Source blocked", className: "source-blocked" };
+      return { url: "", label: "Source unverified", className: "source-unverified" };
+    }
+
+    function sourceUrl(item) {
+      return linkValidationInfo(item).url;
     }
 
     function imageUrl(item) {
@@ -127,7 +150,7 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
       var firstImage = asRecord(images[0]);
       var urls = asRecord(product.urls);
       var candidate = firstImage.url || urls.image;
-      return sourceUrl({ product: { urls: { product: candidate } } });
+      return httpUrl(candidate);
     }
 
     function initials(item) {
@@ -228,6 +251,22 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
       });
     }
 
+    function searchTitle(search, fallback) {
+      var context = asRecord(search && search.context);
+      return displayText(context.title, displayText(context.intent, fallback || "Saved research"));
+    }
+
+    function formatCompactTime(value) {
+      if (!value) return "Unknown date";
+      var date = new Date(value);
+      if (Number.isNaN(date.getTime())) return "Unknown date";
+      try {
+        return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(date);
+      } catch (_) {
+        return date.toLocaleDateString();
+      }
+    }
+
     function renderSearchNavigator() {
       var searches = savedSearches();
       var select = element("saved-search");
@@ -241,8 +280,7 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
       var currentIndex = searches.findIndex(function (search) { return search.id === state.selectedSearchId; });
       select.disabled = false;
       select.innerHTML = searches.map(function (search, index) {
-        var context = asRecord(search.context);
-        var label = displayText(context.title, displayText(context.intent, "Saved research " + String(index + 1)));
+        var label = searchTitle(search, "Saved research " + String(index + 1)) + " · " + formatCompactTime(search.createdAt);
         return '<option value="' + escapeHtml(search.id) + '"' + (search.id === state.selectedSearchId ? " selected" : "") + '>' + escapeHtml(label) + '</option>';
       }).join("");
       element("previous-search").disabled = currentIndex <= 0;
@@ -250,16 +288,24 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
     }
 
     function setWorkspaceView(view) {
-      state.view = view === "main-basket" ? "main-basket" : "research";
+      state.view = view === "main-basket" || view === "searches" ? view : "research";
       element("research-view").hidden = state.view !== "research";
+      element("searches-view").hidden = state.view !== "searches";
       element("main-basket-view").hidden = state.view !== "main-basket";
       element("mobile-checkout").hidden = state.view !== "main-basket";
       var basketLink = element("main-basket-link");
+      var searchesLink = element("searches-link");
       basketLink.classList.toggle("is-active", state.view === "main-basket");
+      searchesLink.classList.toggle("is-active", state.view === "searches");
       if (state.view === "main-basket") basketLink.setAttribute("aria-current", "page");
       else basketLink.removeAttribute("aria-current");
+      if (state.view === "searches") searchesLink.setAttribute("aria-current", "page");
+      else searchesLink.removeAttribute("aria-current");
       document.body.classList.toggle("is-main-basket", state.view === "main-basket");
-      document.title = state.view === "main-basket" ? "Main basket | MCPBasket" : "MCPBasket";
+      document.body.classList.toggle("is-searches", state.view === "searches");
+      document.title = state.view === "main-basket"
+        ? "Main basket | MCPBasket"
+        : state.view === "searches" ? "Saved searches | MCPBasket" : "MCPBasket";
     }
 
     function updateTabs(items) {
@@ -310,6 +356,7 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
       var product = asRecord(item.product);
       var price = priceRecord(item);
       var availability = availabilityInfo(item);
+      var linkValidation = linkValidationInfo(item);
       var image = imageUrl(item);
       var source = sourceUrl(item);
       var listPrice = price.listAmount != null && price.amount != null && price.listAmount > price.amount
@@ -323,7 +370,7 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
         : '<div class="candidate-visual">' + imageMarkup + '</div>';
       var sourceMarkup = source
         ? '<a class="source-link" data-source-modal="true" data-source-title="' + escapeHtml(displayText(product.title, "Product page")) + '" href="' + escapeHtml(source) + '" target="_blank" rel="noreferrer">View source &#8599;</a>'
-        : '<span class="source-link">No source</span>';
+        : '<span class="source-link source-state ' + linkValidation.className + '">' + escapeHtml(linkValidation.label) + '</span>';
       var existingDecision = finalDecisionFor(item, searchId);
       var mainBasketAction = existingDecision
         ? '<span class="in-main-basket">In main basket</span>'
@@ -339,6 +386,7 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
               '<span class="candidate-pills">',
                 '<span class="pill ' + statusClass(item.status) + '">' + escapeHtml(statusLabel(item.status)) + '</span>',
                 '<span class="pill ' + availability.className + '">' + escapeHtml(availability.label) + '</span>',
+                '<span class="pill ' + linkValidation.className + '">' + escapeHtml(linkValidation.label) + '</span>',
               '</span>',
             '</span>',
           '</button>',
@@ -363,6 +411,7 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
       var price = priceRecord(item);
       var image = imageUrl(item);
       var source = sourceUrl(item);
+      var linkValidation = linkValidationInfo(item);
       var imageMarkup = image
         ? '<img src="' + escapeHtml(image) + '" alt="' + escapeHtml(displayText(product.title, "Product")) + '">'
         : escapeHtml(initials(item));
@@ -379,7 +428,7 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
           '<div class="main-basket-item-copy">',
             '<h3>' + escapeHtml(displayText(product.title, "Untitled product")) + '</h3>',
             '<p>' + escapeHtml(merchantName(item)) + (selectedOptions ? ' &middot; ' + escapeHtml(selectedOptions) : "") + '</p>',
-            '<span class="main-basket-item-meta">From ' + escapeHtml(searchNameFor(decision)) + ' &middot; Added ' + escapeHtml(formatTime(decision.selectedAt)) + '</span>',
+            '<span class="main-basket-item-meta">' + escapeHtml(linkValidation.label) + ' &middot; From ' + escapeHtml(searchNameFor(decision)) + ' &middot; Added ' + escapeHtml(formatTime(decision.selectedAt)) + '</span>',
           '</div>',
           '<div class="main-basket-item-side">',
             '<div class="main-basket-item-price">' + escapeHtml(formatMoney(price.amount, price.currency)) + '</div>',
@@ -399,17 +448,53 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
         return;
       }
       target.innerHTML = searches.slice().reverse().map(function (search) {
-        var context = asRecord(search.context);
         var selectedCount = decisions.filter(function (decision) { return decision.sourceSearchId === search.id; }).length;
         var itemCount = asArray(search.items).length;
         return [
           '<button class="history-entry" type="button" data-action="open-search" data-search-id="' + escapeHtml(search.id) + '">',
-            '<strong>' + escapeHtml(displayText(context.title, displayText(context.intent, "Saved research"))) + '</strong>',
-            '<p>' + escapeHtml(displayText(context.intent, itemCount + " product candidates")) + '</p>',
-            '<span>' + itemCount + ' candidates &middot; ' + selectedCount + ' final decisions</span>',
+            '<strong>' + escapeHtml(searchTitle(search)) + '</strong>',
+            '<p>' + escapeHtml(displayText(asRecord(search.context).intent, itemCount + " product candidates")) + '</p>',
+            '<span>Created ' + escapeHtml(formatCompactTime(search.createdAt)) + ' &middot; ' + itemCount + ' candidates &middot; ' + selectedCount + ' in main basket</span>',
           '</button>'
         ].join("");
       }).join("");
+    }
+
+    function renderSearchesWorkspace() {
+      var searches = savedSearches();
+      var decisions = asArray(decisionBasket().items);
+      var productCount = searches.reduce(function (count, search) { return count + asArray(search.items).length; }, 0);
+      element("searches-count").textContent = String(searches.length);
+      element("searches-summary-count").textContent = String(searches.length);
+      element("searches-summary-products").textContent = String(productCount);
+      element("searches-summary-basket").textContent = String(decisions.length);
+      element("searches-description").textContent = searches.length
+        ? searches.length + " saved research sessions with the products returned by the agent."
+        : "Every research response is preserved with its candidate list.";
+      element("searches-sidebar-basket-count").textContent = decisions.length === 1 ? "1 product" : decisions.length + " products";
+      element("searches-sidebar-copy").textContent = decisions.length
+        ? "" + decisions.length + " selected products are ready to review together."
+        : "Select products from any saved research and they will stay together here.";
+      element("search-page-items").innerHTML = searches.length
+        ? searches.slice().reverse().map(function (search) {
+          var itemCount = asArray(search.items).length;
+          var selectedCount = decisions.filter(function (decision) { return decision.sourceSearchId === search.id; }).length;
+          return [
+            '<button class="search-page-entry" type="button" data-action="open-search" data-search-id="' + escapeHtml(search.id) + '">',
+              '<span class="search-page-entry-date">' + escapeHtml(formatCompactTime(search.createdAt)) + '</span>',
+              '<span class="search-page-entry-copy">',
+                '<strong>' + escapeHtml(searchTitle(search)) + '</strong>',
+                '<span>' + escapeHtml(displayText(asRecord(search.context).intent, "Product research")) + '</span>',
+              '</span>',
+              '<span class="search-page-entry-meta">',
+                '<span>' + itemCount + (itemCount === 1 ? " product" : " products") + '</span>',
+                '<span>' + selectedCount + " in main basket</span>",
+              '</span>',
+              '<span class="search-page-entry-arrow" aria-hidden="true">&#8594;</span>',
+            '</button>'
+          ].join("");
+        }).join("")
+        : '<div class="empty-state"><h3>No saved searches yet</h3><p>When the agent starts a product research response, its returned candidates will appear here with their creation time.</p></div>';
     }
 
     function renderMainBasketWorkspace() {
@@ -468,11 +553,9 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
       }).join("");
     }
 
-    function renderInspector(item, searchId, isActiveSearch) {
-      var target = element("inspector-content");
+    function productDetailMarkup(item, searchId, isActiveSearch, headingId, includeMobileAddAction) {
       if (!item) {
-        target.innerHTML = '<p class="eyebrow">Candidate review</p><h2 id="review-heading">Select a product</h2><p class="inspector-empty">Choose an option to inspect its price, evidence, and checkout readiness.</p>';
-        return;
+        return '<p class="eyebrow">Candidate review</p><h2 id="' + escapeHtml(headingId) + '">Select a product</h2><p class="inspector-empty">Choose an option to inspect its price, evidence, and checkout readiness.</p>';
       }
       var product = asRecord(item.product);
       var price = priceRecord(item);
@@ -480,6 +563,7 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
       var evidence = asRecord(product.evidence);
       var checkout = checkoutInfo(item);
       var source = sourceUrl(item);
+      var linkValidation = linkValidationInfo(item);
       var options = asArray(product.selectedOptions).map(function (option) {
         var record = asRecord(option);
         return displayText(record.label || record.name, "Option") + ": " + displayText(record.value, "Not selected");
@@ -497,15 +581,17 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
       var existingDecision = finalDecisionFor(item, searchId);
       var basketStatus = existingDecision
         ? '<span class="in-main-basket">In main basket</span>'
-        : '<span class="basket-hint">Use Add to basket in the product list.</span>';
+        : includeMobileAddAction
+          ? '<button class="mobile-add-to-basket" type="button" data-action="add-to-main-basket" data-id="' + escapeHtml(item.id) + '" data-search-id="' + escapeHtml(searchId || "") + '">Add to basket</button>'
+          : '<span class="basket-hint">Use Add to basket in the product list.</span>';
       var stageControl = isActiveSearch
         ? '<label class="stage-control"><span>Research stage</span><select data-action="status" data-id="' + escapeHtml(item.id) + '" aria-label="Research stage for ' + escapeHtml(displayText(product.title, "product")) + '">' + selectOptions(item.status) + '</select></label>'
         : '<div class="stage-control"><span>Saved research stage</span><strong class="pill ' + statusClass(item.status) + '">' + escapeHtml(statusLabel(item.status)) + '</strong></div>';
-      target.innerHTML = [
+      return [
         '<div class="review-top">',
           '<div>',
             '<p class="eyebrow">Candidate review</p>',
-            '<h2 class="review-title" id="review-heading">' + escapeHtml(displayText(product.title, "Untitled product")) + '</h2>',
+            '<h2 class="review-title" id="' + escapeHtml(headingId) + '">' + escapeHtml(displayText(product.title, "Untitled product")) + '</h2>',
             '<p class="review-subtitle">' + escapeHtml(merchantName(item)) + (product.brand ? ' &middot; ' + escapeHtml(product.brand) : "") + '</p>',
           '</div>',
           '<div><div class="review-price">' + escapeHtml(formatMoney(price.amount, price.currency)) + '</div>' + listPrice + '</div>',
@@ -521,6 +607,7 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
           detailRow("Rating", ratingValue),
           detailRow("Quantity", String(item.quantity || 1)),
           detailRow("Selected option", options || "Not captured"),
+          detailRow("Source", linkValidation.label),
         '</dl>', tagsMarkup(item), '</section>',
         '<section class="review-section"><h3>Key attributes</h3>', attributesMarkup(item), '</section>',
         '<section class="review-section"><h3>Research notes</h3><p>' + escapeHtml(displayText(item.notes || evidence.reason, "No rationale or notes captured yet.")) + '</p>',
@@ -529,6 +616,10 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
         '</section>',
         '<section class="review-section"><h3>Checkout readiness</h3><div class="checkout-note' + (checkoutReady ? " is-ready" : "") + '">' + escapeHtml(checkoutMessage) + '</div></section>'
       ].join("");
+    }
+
+    function renderInspector(item, searchId, isActiveSearch) {
+      element("inspector-content").innerHTML = productDetailMarkup(item, searchId, isActiveSearch, "review-heading", false);
     }
 
     function render(basket) {
@@ -557,6 +648,7 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
       element("stat-total-detail").textContent = Object.keys(totalByCurrency(items)).length ? "Across priced options" : "Prices not captured";
       updateTabs(items);
       renderSearchNavigator();
+      renderSearchesWorkspace();
       renderMainBasketWorkspace();
       setWorkspaceView(state.view);
 
@@ -637,6 +729,7 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
           body: JSON.stringify({ itemId: id, searchId: searchId || undefined, confirm: true })
         });
         if (!response.ok) throw new Error("The product could not be added to the main basket.");
+        closeProductModal();
         showToast("Added to main basket.", false);
         await loadBasket();
       } catch (error) {
@@ -670,11 +763,38 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
     }
 
     function syncModalLock() {
-      document.body.classList.toggle("has-modal", !element("checkout-modal").hidden || !element("source-modal").hidden);
+      document.body.classList.toggle(
+        "has-modal",
+        !element("checkout-modal").hidden || !element("source-modal").hidden || !element("product-modal").hidden,
+      );
     }
 
     function sourceModalEnabled() {
       return window.matchMedia && window.matchMedia("(max-width: 620px)").matches;
+    }
+
+    function productModalEnabled() {
+      return window.matchMedia && window.matchMedia("(max-width: 620px)").matches;
+    }
+
+    function openProductModal(item, searchId, isActiveSearch, opener) {
+      if (!item) return;
+      var modal = element("product-modal");
+      state.productOpener = opener || null;
+      element("product-modal-content").innerHTML = productDetailMarkup(item, searchId, isActiveSearch, "product-modal-title", true);
+      modal.hidden = false;
+      syncModalLock();
+      window.setTimeout(function () { modal.querySelector("[data-action='close-product']").focus(); }, 0);
+    }
+
+    function closeProductModal() {
+      var modal = element("product-modal");
+      if (modal.hidden) return;
+      modal.hidden = true;
+      element("product-modal-content").innerHTML = "";
+      syncModalLock();
+      if (state.productOpener && typeof state.productOpener.focus === "function") state.productOpener.focus();
+      state.productOpener = null;
     }
 
     function openSourceModal(url, title, opener) {
@@ -716,6 +836,24 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
       render(state.basket || { context: {}, items: [] });
     }
 
+    function openSavedSearch(searchId) {
+      if (!searchId) return;
+      window.location.assign("/?search=" + encodeURIComponent(searchId));
+    }
+
+    function returnToPreviousView() {
+      try {
+        var referrer = document.referrer ? new URL(document.referrer) : null;
+        if (referrer && referrer.origin === window.location.origin) {
+          window.history.back();
+          return;
+        }
+      } catch (_) {
+        // Fall through to the saved-search archive when referrer parsing is unavailable.
+      }
+      window.location.assign("/searches");
+    }
+
     document.addEventListener("click", function (event) {
       var sourceLink = event.target.closest("a[data-source-modal='true']");
       if (!sourceLink || !sourceModalEnabled()) return;
@@ -750,7 +888,13 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
       var action = button.getAttribute("data-action");
       if (action === "select") {
         state.selectedId = button.getAttribute("data-id");
-        render(state.basket || { context: {}, items: [] });
+        var selectedItem = selectedResearchItems().find(function (item) { return item.id === state.selectedId; });
+        if (productModalEnabled() && selectedItem) {
+          var search = selectedSearch();
+          openProductModal(selectedItem, search && search.id, selectedSearchIsActive(), button);
+        } else {
+          render(state.basket || { context: {}, items: [] });
+        }
       } else if (action === "remove") {
         removeItem(button.getAttribute("data-id"));
       } else if (action === "add-to-main-basket") {
@@ -758,14 +902,17 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
       } else if (action === "remove-decision") {
         removeFinalDecision(button.getAttribute("data-id"));
       } else if (action === "open-search") {
-        state.view = "research";
-        selectSavedSearch(button.getAttribute("data-search-id"));
+        openSavedSearch(button.getAttribute("data-search-id"));
       } else if (action === "checkout") {
         openCheckoutPlaceholder();
       } else if (action === "close-checkout") {
         setCheckoutModal(false);
       } else if (action === "close-source") {
         closeSourceModal();
+      } else if (action === "close-product") {
+        closeProductModal();
+      } else if (action === "go-back") {
+        returnToPreviousView();
       }
     });
 
@@ -777,9 +924,14 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
       if (event.target === event.currentTarget) closeSourceModal();
     });
 
+    element("product-modal").addEventListener("click", function (event) {
+      if (event.target === event.currentTarget) closeProductModal();
+    });
+
     document.addEventListener("keydown", function (event) {
       if (event.key !== "Escape") return;
       if (!element("source-modal").hidden) closeSourceModal();
+      else if (!element("product-modal").hidden) closeProductModal();
       else if (!element("checkout-modal").hidden) setCheckoutModal(false);
     });
 

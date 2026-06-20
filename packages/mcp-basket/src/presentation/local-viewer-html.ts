@@ -1,10 +1,18 @@
 import { LOCAL_VIEWER_CLIENT } from "./local-viewer-client.js";
 import { LOCAL_VIEWER_STYLES } from "./local-viewer-styles.js";
 
-export function renderBasketViewerHtml(options: { initialView?: "research" | "main-basket" } = {}): string {
-  const initialView = options.initialView === "main-basket" ? "main-basket" : "research";
-  const researchViewHidden = initialView === "main-basket" ? " hidden" : "";
-  const mainBasketViewHidden = initialView === "research" ? " hidden" : "";
+type BasketViewerView = "research" | "searches" | "main-basket";
+
+function escapeHtmlAttribute(value: string): string {
+  return value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+export function renderBasketViewerHtml(options: { initialView?: BasketViewerView; initialSearchId?: string } = {}): string {
+  const initialView = options.initialView === "main-basket" || options.initialView === "searches" ? options.initialView : "research";
+  const researchViewHidden = initialView === "research" ? "" : " hidden";
+  const searchesViewHidden = initialView === "searches" ? "" : " hidden";
+  const mainBasketViewHidden = initialView === "main-basket" ? "" : " hidden";
+  const initialSearchId = options.initialSearchId ? ` data-initial-search-id="${escapeHtmlAttribute(options.initialSearchId)}"` : "";
 
   return `<!doctype html>
 <html lang="en">
@@ -15,7 +23,7 @@ export function renderBasketViewerHtml(options: { initialView?: "research" | "ma
   <title>MCPBasket</title>
   <style>${LOCAL_VIEWER_STYLES}</style>
 </head>
-<body data-initial-view="${initialView}"${initialView === "main-basket" ? ' class="is-main-basket"' : ""}>
+<body data-initial-view="${initialView}"${initialSearchId}${initialView === "main-basket" ? ' class="is-main-basket"' : ""}>
   <div class="app-shell">
     <header class="app-header">
       <a class="brand" href="/" aria-label="MCPBasket home">
@@ -30,6 +38,10 @@ export function renderBasketViewerHtml(options: { initialView?: "research" | "ma
         <button class="icon-button" id="refresh" type="button" title="Refresh basket" aria-label="Refresh basket">
           <span aria-hidden="true">&#8635;</span>
         </button>
+        <a class="searches-nav" id="searches-link" href="/searches" title="Open saved searches" aria-label="Open saved searches">
+          <span class="searches-nav-icon" aria-hidden="true">&#128269;</span>
+          <span class="searches-nav-count" id="searches-count">0</span>
+        </a>
         <a class="basket-nav" id="main-basket-link" href="/basket" title="Open main basket" aria-label="Open main basket">
           <span class="basket-nav-icon" aria-hidden="true">&#128722;</span>
           <span class="basket-nav-count" id="main-basket-count">0</span>
@@ -125,6 +137,31 @@ export function renderBasketViewerHtml(options: { initialView?: "research" | "ma
         </aside>
       </section>
 
+      <section class="searches-workspace" id="searches-view"${searchesViewHidden} aria-labelledby="searches-heading">
+        <header class="searches-header">
+          <div>
+            <p class="eyebrow">Agent research archive</p>
+            <h2 id="searches-heading">Saved searches</h2>
+            <p class="region-description" id="searches-description">Every research response is preserved with its candidate list.</p>
+          </div>
+          <a class="back-to-research" href="/">Current research</a>
+        </header>
+        <dl class="searches-summary" aria-label="Saved searches summary">
+          <div><dt>Searches</dt><dd id="searches-summary-count">0</dd></div>
+          <div><dt>Captured products</dt><dd id="searches-summary-products">0</dd></div>
+          <div><dt>Main basket</dt><dd id="searches-summary-basket">0</dd></div>
+        </dl>
+        <div class="searches-layout">
+          <section class="searches-list" id="search-page-items" aria-live="polite"></section>
+          <aside class="searches-sidebar">
+            <p class="eyebrow">Selection</p>
+            <h3>Main basket</h3>
+            <p id="searches-sidebar-copy">Selected products from any saved research stay together here.</p>
+            <a class="open-main-basket" href="/basket">Open main basket <span id="searches-sidebar-basket-count">0</span></a>
+          </aside>
+        </div>
+      </section>
+
       <section class="main-basket-workspace" id="main-basket-view"${mainBasketViewHidden} aria-labelledby="main-basket-heading">
         <header class="main-basket-header">
           <div>
@@ -132,7 +169,7 @@ export function renderBasketViewerHtml(options: { initialView?: "research" | "ma
             <h2 id="main-basket-heading">Main basket</h2>
             <p class="region-description" id="main-basket-description">Products selected across every saved research session.</p>
           </div>
-          <a class="back-to-research" href="/">Back to research</a>
+          <button class="back-to-research" type="button" data-action="go-back">Back</button>
         </header>
         <dl class="main-basket-summary" aria-label="Main basket summary">
           <div>
@@ -206,6 +243,15 @@ export function renderBasketViewerHtml(options: { initialView?: "research" | "ma
         <span>Some stores block embedded product pages.</span>
         <a class="source-link" id="source-modal-external" href="#" target="_blank" rel="noreferrer">Open in browser &#8599;</a>
       </footer>
+    </div>
+  </div>
+  <div class="product-modal" id="product-modal" hidden role="dialog" aria-modal="true" aria-labelledby="product-modal-title">
+    <div class="product-modal-card">
+      <header class="product-modal-header">
+        <p class="eyebrow">Product detail</p>
+        <button class="modal-close" type="button" data-action="close-product" aria-label="Close product detail">&#215;</button>
+      </header>
+      <div class="product-modal-content" id="product-modal-content"></div>
     </div>
   </div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
