@@ -39,6 +39,8 @@ Run the MCP server directly:
 npm run mcp
 ```
 
+Both processes must receive the same absolute `MCPBASKET_STORE_PATH`. Otherwise the agent will write to a different basket from the one shown in the viewer.
+
 ## MCP Config
 
 Use the built entrypoint:
@@ -50,7 +52,10 @@ Use the built entrypoint:
       "command": "node",
       "args": ["/absolute/path/to/mcpbasket/packages/mcp-basket/build/index.js"],
       "env": {
-        "MCPBASKET_PORT": "4377"
+        "MCPBASKET_STORE_PATH": "/absolute/path/to/mcpbasket/basket.json",
+        "MCPBASKET_PORT": "4377",
+        "MCPBASKET_BIND_HOST": "127.0.0.1",
+        "MCPBASKET_VIEWER_URL": "http://127.0.0.1:4377"
       }
     }
   }
@@ -98,7 +103,12 @@ Minimal product candidate:
     },
     "evidence": {
       "reason": "Matches the user request",
-      "confidence": "medium"
+      "confidence": "medium",
+      "linkValidation": {
+        "status": "verified",
+        "checkedAt": "2026-06-20T12:00:00.000Z",
+        "finalUrl": "https://example.com/products/example"
+      }
     }
   },
   "quantity": 1,
@@ -116,6 +126,8 @@ MCPBASKET_VIEWER_URL=http://127.0.0.1:4377
 ```
 
 `MCPBASKET_BIND_HOST` controls the network interface where the local viewer listens. `MCPBASKET_VIEWER_URL` controls the URL returned to the agent and should be set independently when accessing the viewer through a private network, reverse proxy, or tunnel. For example, a Tailscale-only installation can bind to the machine's Tailscale IP and set the viewer URL to its MagicDNS hostname.
+
+Only set `product.urls.product` and `product.identifiers.sourceUrl` when the agent has validated the direct product page. The viewer opens only sources marked with `product.evidence.linkValidation.status: "verified"`; preserve blocked or unverified URLs in `evidence.linkValidation.observedUrl` instead.
 
 `basket-export-checkout-line-items` does not place an order. Use its output with a separately installed checkout integration after the user approves the exact purchase.
 
