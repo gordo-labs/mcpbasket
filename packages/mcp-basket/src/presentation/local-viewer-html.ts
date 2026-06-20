@@ -1,18 +1,22 @@
 import { LOCAL_VIEWER_CLIENT } from "./local-viewer-client.js";
 import { LOCAL_VIEWER_STYLES } from "./local-viewer-styles.js";
 
-type BasketViewerView = "research" | "searches" | "main-basket";
+type BasketViewerView = "research" | "searches" | "main-basket" | "product-detail";
 
 function escapeHtmlAttribute(value: string): string {
   return value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-export function renderBasketViewerHtml(options: { initialView?: BasketViewerView; initialSearchId?: string } = {}): string {
-  const initialView = options.initialView === "main-basket" || options.initialView === "searches" ? options.initialView : "research";
+export function renderBasketViewerHtml(options: { initialView?: BasketViewerView; initialSearchId?: string; initialProductId?: string } = {}): string {
+  const initialView = options.initialView === "main-basket" || options.initialView === "searches" || options.initialView === "product-detail"
+    ? options.initialView
+    : "research";
   const researchViewHidden = initialView === "research" ? "" : " hidden";
   const searchesViewHidden = initialView === "searches" ? "" : " hidden";
   const mainBasketViewHidden = initialView === "main-basket" ? "" : " hidden";
+  const productDetailViewHidden = initialView === "product-detail" ? "" : " hidden";
   const initialSearchId = options.initialSearchId ? ` data-initial-search-id="${escapeHtmlAttribute(options.initialSearchId)}"` : "";
+  const initialProductId = options.initialProductId ? ` data-initial-product-id="${escapeHtmlAttribute(options.initialProductId)}"` : "";
 
   return `<!doctype html>
 <html lang="en">
@@ -23,7 +27,7 @@ export function renderBasketViewerHtml(options: { initialView?: BasketViewerView
   <title>MCPBasket</title>
   <style>${LOCAL_VIEWER_STYLES}</style>
 </head>
-<body data-initial-view="${initialView}"${initialSearchId}${initialView === "main-basket" ? ' class="is-main-basket"' : ""}>
+<body data-initial-view="${initialView}"${initialSearchId}${initialProductId}${initialView === "main-basket" ? ' class="is-main-basket"' : ""}>
   <div class="app-shell">
     <header class="app-header">
       <a class="brand" href="/" aria-label="MCPBasket home">
@@ -160,6 +164,14 @@ export function renderBasketViewerHtml(options: { initialView?: BasketViewerView
             <a class="open-main-basket" href="/basket">Open main basket <span id="searches-sidebar-basket-count">0</span></a>
           </aside>
         </div>
+      </section>
+
+      <section class="product-detail-workspace" id="product-detail-view"${productDetailViewHidden} aria-labelledby="product-page-title">
+        <header class="product-detail-header">
+          <button class="back-to-research" type="button" data-action="go-back-product">Back</button>
+          <span class="product-detail-path" id="product-detail-path">Research product</span>
+        </header>
+        <article class="product-detail-surface" id="product-detail-content"></article>
       </section>
 
       <section class="main-basket-workspace" id="main-basket-view"${mainBasketViewHidden} aria-labelledby="main-basket-heading">

@@ -35,13 +35,14 @@ function sendJson(response: ServerResponse, statusCode: number, body: unknown): 
 
 function sendHtml(
   response: ServerResponse,
-  initialView: "research" | "searches" | "main-basket" = "research",
+  initialView: "research" | "searches" | "main-basket" | "product-detail" = "research",
   initialSearchId?: string,
+  initialProductId?: string,
 ): void {
   setBaseHeaders(response);
   response.statusCode = 200;
   response.setHeader("Content-Type", "text/html; charset=utf-8");
-  response.end(renderBasketViewerHtml({ initialView, initialSearchId }));
+  response.end(renderBasketViewerHtml({ initialView, initialSearchId, initialProductId }));
 }
 
 async function readJson(request: IncomingMessage): Promise<unknown> {
@@ -100,7 +101,9 @@ export async function createBasketViewerServer(
       const pathname = url.pathname;
 
       if (request.method === "GET" && (pathname === "/" || pathname === "/index.html")) {
-        sendHtml(response, "research", url.searchParams.get("search") || undefined);
+        const searchId = url.searchParams.get("search") || undefined;
+        const productId = url.searchParams.get("product") || undefined;
+        sendHtml(response, productId ? "product-detail" : "research", searchId, productId);
         return;
       }
 
