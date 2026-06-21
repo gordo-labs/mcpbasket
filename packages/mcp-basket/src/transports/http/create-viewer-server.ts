@@ -77,6 +77,16 @@ function itemIdFromPath(pathname: string, suffix = ""): string | null {
   return candidate.length > 0 ? decodeURIComponent(candidate) : null;
 }
 
+function searchIdFromPath(pathname: string, suffix = ""): string | null {
+  const prefix = "/api/searches/";
+  if (!pathname.startsWith(prefix) || !pathname.endsWith(suffix)) {
+    return null;
+  }
+
+  const candidate = pathname.slice(prefix.length, suffix.length > 0 ? -suffix.length : undefined);
+  return candidate.length > 0 ? decodeURIComponent(candidate) : null;
+}
+
 function errorStatus(error: unknown): number {
   if (error instanceof HttpError) {
     return error.statusCode;
@@ -193,6 +203,43 @@ export async function createBasketViewerServer(
           decision: result.item,
           decisions: summarizeDecisionBasket(result.basket.decisionBasket),
           basket: summarizeBasket(result.basket),
+        });
+        return;
+      }
+
+      const refinementSearchId = searchIdFromPath(pathname, "/refinements");
+      if (request.method === "POST" && refinementSearchId != null) {
+        const { prompt } = z.object({ prompt: z.string().min(1).max(10_000) }).parse(await readJson(request));
+        const result = await runtime.service.requestSearchRefinement(refinementSearchId, prompt);
+        if (result == null) {
+          sendJson(response, 404, { error: "Saved search not found" });
+          return;
+        }
+
+        let requestRecord = result.request;
+        let dispatched = false;
+        if (runtime.refinementDispatcher.isConfigured()) {
+          dispatched = await runtime.refinementDispatcher.dispatch(requestRecord);
+          if (dispatched) {
+            const marked = await runtime.service.markSearchRefinementDispatched(requestRecord.id);
+            if (marked != null) {
+              requestRecord = marked.request;
+            }
+          } else {
+            const failed = await runtime.service.failSearchRefinementRequest(
+              requestRecord.id,
+              "The configured Hermes refinement command could not start.",
+            );
+            if (failed != null) {
+              requestRecord = failed.request;
+            }
+          }
+        }
+
+        sendJson(response, 202, {
+          refinement: requestRecord,
+          dispatched,
+          basket: summarizeBasket(await runtime.service.load()),
         });
         return;
       }

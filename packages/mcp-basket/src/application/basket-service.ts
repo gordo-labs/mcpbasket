@@ -20,8 +20,10 @@ import {
   type CartItem,
   type CartItemInput,
   type Clock,
+  type DecisionBasket,
   type DecisionBasketItem,
   type IdGenerator,
+  type SearchRefinementRequest,
 } from "../domain/index.js";
 import { checkoutLocatorFor } from "../domain/basket.js";
 import { compactBasketItem } from "../domain/summary.js";
@@ -43,6 +45,11 @@ export type AddDecisionBasketItemResult = {
   basket: Basket;
   item: DecisionBasketItem;
   created: boolean;
+};
+
+export type SearchRefinementRequestResult = {
+  basket: Basket;
+  request: SearchRefinementRequest;
 };
 
 export class BasketService {
@@ -69,15 +76,86 @@ export class BasketService {
         clock: () => now,
         idGenerator: this.dependencies.idGenerator,
         forceNewSession: parsedInput.startNewSearch === true,
+        refinementOfSearchId: parsedInput.refinementOfSearchId,
+        refinementRequestId: parsedInput.refinementRequestId,
       });
+      const decisionBasket = parsedInput.refinementRequestId == null
+        ? session.decisionBasket
+        : this.updateRefinementRequest(session.decisionBasket, parsedInput.refinementRequestId, {
+          status: "in_progress",
+          refinedSearchId: session.activeSearchId,
+          error: undefined,
+        }, now);
       return this.repository.write({
         ...basket,
         context,
         items: session.items,
         activeSearchId: session.activeSearchId,
-        decisionBasket: session.decisionBasket,
+        decisionBasket,
         updatedAt: now,
       });
+    });
+  }
+
+  async requestSearchRefinement(searchId: string, prompt: string): Promise<SearchRefinementRequestResult | null> {
+    const normalizedPrompt = prompt.trim();
+    if (normalizedPrompt.length === 0 || normalizedPrompt.length > 10_000) {
+      throw new Error("Refinement prompt must be between 1 and 10,000 characters.");
+    }
+
+    return this.repository.runExclusive(async () => {
+      const basket = await this.loadOrCreate();
+      const now = this.now();
+      const decisionBasket = decisionBasketFor(basket, () => now);
+      const search = decisionBasket.searches.find((entry) => entry.id === searchId);
+      if (search == null) {
+        return null;
+      }
+
+      const request: SearchRefinementRequest = {
+        id: this.id(),
+        searchId,
+        prompt: normalizedPrompt,
+        searchSnapshot: search,
+        status: "queued",
+        createdAt: now,
+        updatedAt: now,
+      };
+      const nextDecisionBasket = {
+        ...decisionBasket,
+        refinementRequests: [...decisionBasket.refinementRequests, request],
+        updatedAt: now,
+      };
+      const saved = await this.repository.write({ ...basket, decisionBasket: nextDecisionBasket, updatedAt: now });
+      return { basket: saved, request };
+    });
+  }
+
+  async markSearchRefinementDispatched(id: string): Promise<SearchRefinementRequestResult | null> {
+    return this.updateSearchRefinementRequest(id, { status: "dispatched", error: undefined });
+  }
+
+  async getSearchRefinementRequest(id: string): Promise<SearchRefinementRequestResult | null> {
+    return this.updateSearchRefinementRequest(id, { status: "in_progress", error: undefined }, false);
+  }
+
+  async completeSearchRefinementRequest(
+    id: string,
+    summary: string,
+    refinedSearchId?: string,
+  ): Promise<SearchRefinementRequestResult | null> {
+    return this.updateSearchRefinementRequest(id, {
+      status: "completed",
+      summary: summary.trim() || undefined,
+      refinedSearchId,
+      error: undefined,
+    });
+  }
+
+  async failSearchRefinementRequest(id: string, error: string): Promise<SearchRefinementRequestResult | null> {
+    return this.updateSearchRefinementRequest(id, {
+      status: "failed",
+      error: error.trim() || "Agent refinement failed.",
     });
   }
 
@@ -272,5 +350,47 @@ export class BasketService {
 
   private now(): string {
     return (this.dependencies.clock || systemClock)();
+  }
+
+  private id(): string {
+    return (this.dependencies.idGenerator || uuidGenerator)();
+  }
+
+  private async updateSearchRefinementRequest(
+    id: string,
+    patch: Partial<Pick<SearchRefinementRequest, "status" | "summary" | "error" | "refinedSearchId">>,
+    allowCompleted = true,
+  ): Promise<SearchRefinementRequestResult | null> {
+    return this.repository.runExclusive(async () => {
+      const basket = await this.loadOrCreate();
+      const now = this.now();
+      const decisionBasket = decisionBasketFor(basket, () => now);
+      const current = decisionBasket.refinementRequests.find((request) => request.id === id);
+      if (current == null || (!allowCompleted && current.status === "completed")) {
+        return null;
+      }
+      const nextDecisionBasket = this.updateRefinementRequest(decisionBasket, id, patch, now);
+      const request = nextDecisionBasket.refinementRequests.find((entry) => entry.id === id);
+      if (request == null) {
+        return null;
+      }
+      const saved = await this.repository.write({ ...basket, decisionBasket: nextDecisionBasket, updatedAt: now });
+      return { basket: saved, request };
+    });
+  }
+
+  private updateRefinementRequest(
+    decisionBasket: DecisionBasket,
+    id: string,
+    patch: Partial<Pick<SearchRefinementRequest, "status" | "summary" | "error" | "refinedSearchId">>,
+    updatedAt: string,
+  ) {
+    const refinementRequests = decisionBasket.refinementRequests.map((request) => {
+      if (request.id !== id) {
+        return request;
+      }
+      return { ...request, ...patch, updatedAt };
+    });
+    return { ...decisionBasket, refinementRequests, updatedAt };
   }
 }

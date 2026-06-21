@@ -174,6 +174,50 @@ export const LOCAL_VIEWER_STYLES = String.raw`
   }
 
   .overview-copy { max-width: 860px; }
+  .refinement-form {
+    display: grid;
+    gap: 8px;
+    max-width: 720px;
+    margin-top: 20px;
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    background: var(--paper);
+  }
+  .refinement-form-copy { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .refinement-form label { color: #344054; font-size: 12px; font-weight: 750; }
+  #refinement-status { color: var(--muted); font-size: 11px; font-weight: 650; text-align: right; }
+  #refinement-status.is-queued, #refinement-status.is-dispatched, #refinement-status.is-in-progress { color: var(--blue); }
+  #refinement-status.is-completed { color: var(--green); }
+  #refinement-status.is-failed { color: var(--red); }
+  .refinement-form-controls { display: flex; align-items: center; gap: 8px; }
+  .refinement-form input {
+    width: 100%;
+    min-width: 0;
+    min-height: 36px;
+    padding: 0 10px;
+    border: 1px solid var(--line-strong);
+    border-radius: 5px;
+    outline: 0;
+    background: #ffffff;
+    color: var(--ink);
+    font-size: 13px;
+  }
+  .refinement-form input::placeholder { color: var(--faint); }
+  .refinement-form input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(41, 105, 199, 0.12); }
+  .refinement-submit {
+    flex: 0 0 auto;
+    min-height: 36px;
+    padding: 0 13px;
+    border: 1px solid var(--teal);
+    border-radius: 5px;
+    background: var(--teal);
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 750;
+  }
+  .refinement-submit:hover:not(:disabled) { border-color: var(--teal-dark); background: var(--teal-dark); }
+  .refinement-submit:disabled { cursor: not-allowed; opacity: 0.52; }
   h1, h2, h3, p { overflow-wrap: anywhere; }
   h1 {
     margin: 7px 0 0;
@@ -937,6 +981,9 @@ export const LOCAL_VIEWER_STYLES = String.raw`
     .is-main-basket .workspace { padding-bottom: 104px; }
     .header-actions { gap: 8px; }
     .basket-overview { padding-top: 26px; }
+    .refinement-form { margin-top: 16px; }
+    .refinement-form-controls { align-items: stretch; flex-direction: column; }
+    .refinement-submit { width: 100%; }
     h1 { font-size: 27px; }
     .summary-band { margin-top: 24px; }
     .metric { padding: 15px 14px; }

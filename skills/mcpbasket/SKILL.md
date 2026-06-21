@@ -76,6 +76,12 @@ MCPBASKET_STORE_PATH=.mcpbasket/basket.json
    - Pass `searchId` when selecting a product from a historical search. Use `basket-list-decision-basket` to review saved decisions and their originating searches. Removing a decision never removes its research candidate.
    - Before adding a historical or current candidate, re-check `product.evidence.linkValidation`. Treat `blocked` and `unverified` as a review requirement, not checkout-ready evidence.
 
+7. When processing a saved-search refinement request:
+   - Call `basket-get-refinement-request` first. Its `sourceSearch` is the immutable persisted baseline and its `prompt` is the extra direction entered by the user. Treat both as required research context.
+   - Never edit, clear, or replace the source search. Create a distinct linked response with `basket-set-context`, `startNewSearch: true`, `refinementOfSearchId: request.searchId`, and `refinementRequestId: request.id`. Include the original constraints plus the refinement prompt in the new context.
+   - Research, validate direct source links and images, and record the resulting candidates normally. Do not purchase anything.
+   - After candidates have been stored, call `basket-complete-refinement-request` with the request id, the new saved search id, and a concise summary. If the run cannot finish, leave the request open so a later agent can recover it through `basket-list-refinement-requests`.
+
 ## MCP Tools
 
 - `basket-set-context`: set intent and constraints.
@@ -87,6 +93,9 @@ MCPBASKET_STORE_PATH=.mcpbasket/basket.json
 - `basket-add-to-decision-basket`: save an explicitly selected candidate to the durable local decision basket.
 - `basket-list-decision-basket`: list final decisions and saved research sessions.
 - `basket-remove-from-decision-basket`: remove a final decision without deleting research.
+- `basket-list-refinement-requests`: find pending saved-search refinements, including interrupted requests.
+- `basket-get-refinement-request`: load the user prompt and immutable source-search snapshot for a refinement.
+- `basket-complete-refinement-request`: close a refinement after its linked search is recorded.
 - `basket-get-viewer`: get the local viewer URL, API endpoints, and startup command.
 - `basket-export-checkout-line-items`: prepare generic checkout line items.
 

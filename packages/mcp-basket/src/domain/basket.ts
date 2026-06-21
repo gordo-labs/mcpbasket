@@ -38,6 +38,7 @@ export function createEmptyDecisionBasket(clock: Clock = systemClock): DecisionB
     id: "final-decisions",
     items: [],
     searches: [],
+    refinementRequests: [],
     createdAt: now,
     updatedAt: now,
   };
@@ -61,7 +62,13 @@ export function mergeBasketContext(
   input: BasketContextInput,
 ): Basket["context"] {
   const parsed = BasketContextInputSchema.parse(input);
-  const { resetMissingFields, startNewSearch: _startNewSearch, ...nextContext } = parsed;
+  const {
+    resetMissingFields,
+    startNewSearch: _startNewSearch,
+    refinementOfSearchId: _refinementOfSearchId,
+    refinementRequestId: _refinementRequestId,
+    ...nextContext
+  } = parsed;
   return resetMissingFields ? nextContext : { ...current, ...nextContext };
 }
 
@@ -74,7 +81,13 @@ function searchFingerprint(context: Basket["context"]): string | undefined {
 export function beginResearchSession(
   basket: Pick<Basket, "context" | "items" | "activeSearchId" | "decisionBasket">,
   context: Basket["context"],
-  options: { clock?: Clock; idGenerator?: IdGenerator; forceNewSession?: boolean } = {},
+  options: {
+    clock?: Clock;
+    idGenerator?: IdGenerator;
+    forceNewSession?: boolean;
+    refinementOfSearchId?: string;
+    refinementRequestId?: string;
+  } = {},
 ): { decisionBasket: DecisionBasket; activeSearchId?: string; items: CartItem[] } {
   const fingerprint = searchFingerprint(context);
   if (fingerprint == null) {
@@ -145,6 +158,8 @@ export function beginResearchSession(
     id: idGenerator(),
     context,
     items: [],
+    refinementOfSearchId: options.refinementOfSearchId,
+    refinementRequestId: options.refinementRequestId,
     createdAt: now,
     updatedAt: now,
   };

@@ -35,6 +35,8 @@ flowchart LR
   B --> R[File repository]
   R --> J[(basket.json)]
   W[Local viewer] --> H
+  W --> D[Optional Hermes dispatcher]
+  D --> A
 ```
 
 The MCP server and HTTP viewer may run in separate processes. `FileBasketRepository` protects mutations with an exclusive lock file and replaces the JSON file atomically, so the two processes share a consistent store without a database.
@@ -58,7 +60,9 @@ The MCP server and HTTP viewer may run in separate processes. `FileBasketReposit
 
 Candidates move through `candidate`, `shortlisted`, `needs_review`, `approved`, `ready_for_checkout`, `ordered`, or `rejected`. The model does not enforce a checkout transition; it preserves the agent's observed state and leaves real purchase approval to the caller.
 
-Each distinct research context creates a `DecisionSearch` snapshot with its candidate list. The active basket holds the current search while prior snapshots remain in `decisionBasket.searches`. An explicitly confirmed selection is copied to `decisionBasket.items`, together with its originating search id. That durable decision list spans all searches and is the only local input intended for a later final purchase review.
+Each distinct research context creates a `DecisionSearch` snapshot with its candidate list. The active basket holds the current search while prior snapshots remain in `decisionBasket.searches`. A viewer refinement persists a `SearchRefinementRequest` with the user's prompt and an immutable source-search snapshot; its result is a distinct `DecisionSearch` linked through `refinementOfSearchId` and `refinementRequestId`. An explicitly confirmed selection is copied to `decisionBasket.items`, together with its originating search id. That durable decision list spans all searches and is the only local input intended for a later final purchase review.
+
+The optional Hermes dispatcher is an outer runtime adapter. It may spawn a local Hermes one-shot run after the request has been persisted, but it has no access to basket state other than the refinement id in its prompt. The agent must retrieve the snapshot through MCP, so an interrupted dispatch leaves a recoverable durable request.
 
 ## Security Boundary
 

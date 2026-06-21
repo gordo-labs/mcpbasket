@@ -68,6 +68,19 @@ MCPBASKET_VIEWER_URL=http://127.0.0.1:4377 \
 npm run viewer
 ```
 
+To make the refinement input in the viewer launch Hermes automatically, add this environment variable to the **viewer service** (not the Hermes MCP entry):
+
+```bash
+MCPBASKET_REFINEMENT_HERMES_COMMAND="$(command -v hermes)" \
+MCPBASKET_STORE_PATH="$MCPBASKET_STORE_PATH" \
+MCPBASKET_PORT=4377 \
+MCPBASKET_BIND_HOST=127.0.0.1 \
+MCPBASKET_VIEWER_URL=http://127.0.0.1:4377 \
+npm run viewer
+```
+
+The request is saved first with the original search snapshot. Hermes receives a refinement id, calls `basket-get-refinement-request`, records a linked new search, and calls `basket-complete-refinement-request`. Leave the command unset when refinements should remain queued for a later agent run.
+
 Open `http://127.0.0.1:4377/health` to verify the viewer. The screens are:
 
 - `/`: current research and candidates.

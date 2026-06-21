@@ -160,6 +160,72 @@ export function createMcpBasketServer(runtime: BasketRuntime): McpServer {
   );
 
   registerTool(
+    "basket-list-refinement-requests",
+    "List queued, dispatched, or in-progress refinements created from saved research. Use this to recover a refinement after an interrupted agent run.",
+    {
+      includeCompleted: z.boolean().optional().describe("Include completed and failed refinement records."),
+    },
+    async (input) => {
+      const { includeCompleted } = z.object({ includeCompleted: z.boolean().optional() }).parse(input);
+      const basket = await runtime.service.load();
+      const requests = (basket.decisionBasket?.refinementRequests || [])
+        .filter((request) => includeCompleted === true || !["completed", "failed"].includes(request.status))
+        .map((request) => ({
+          id: request.id,
+          searchId: request.searchId,
+          prompt: request.prompt,
+          status: request.status,
+          refinedSearchId: request.refinedSearchId,
+          summary: request.summary,
+          error: request.error,
+          createdAt: request.createdAt,
+          updatedAt: request.updatedAt,
+        }));
+      return textResponse({ requests, ...runtime.links });
+    },
+  );
+
+  registerTool(
+    "basket-get-refinement-request",
+    "Load a saved search-refinement request, including its immutable source-search snapshot and the user's added refinement prompt. Calling this marks the request in progress.",
+    { id: z.string().describe("Refinement request id supplied by the local viewer or basket-list-refinement-requests.") },
+    async (input) => {
+      const { id } = z.object({ id: z.string() }).parse(input);
+      const result = await runtime.service.getSearchRefinementRequest(id);
+      if (result == null) {
+        return textResponse({ error: "Refinement request not found or already completed", id });
+      }
+      return textResponse({
+        request: result.request,
+        sourceSearch: result.request.searchSnapshot,
+        ...runtime.links,
+      });
+    },
+  );
+
+  registerTool(
+    "basket-complete-refinement-request",
+    "Mark a saved search refinement complete only after the new, linked research session and its validated candidates are recorded.",
+    {
+      id: z.string().describe("Refinement request id."),
+      summary: z.string().max(2_000).describe("Short account of the refined research that was recorded."),
+      refinedSearchId: z.string().optional().describe("New saved search id created with basket-set-context."),
+    },
+    async (input) => {
+      const { id, summary, refinedSearchId } = z.object({
+        id: z.string(),
+        summary: z.string().max(2_000),
+        refinedSearchId: z.string().optional(),
+      }).parse(input);
+      const result = await runtime.service.completeSearchRefinementRequest(id, summary, refinedSearchId);
+      if (result == null) {
+        return textResponse({ error: "Refinement request not found", id });
+      }
+      return textResponse({ refinement: result.request, basket: summarizeBasket(result.basket), ...runtime.links });
+    },
+  );
+
+  registerTool(
     "basket-remove-from-decision-basket",
     "Remove a product from the durable final decision basket without deleting its research candidate",
     { id: z.string().describe("Permanent decision id.") },

@@ -115,3 +115,54 @@ test("BasketService records a distinct historical list when research explicitly 
     );
   });
 });
+
+test("BasketService keeps an immutable source snapshot for a linked refinement search", async () => {
+  await withTemporaryStore(async (storePath) => {
+    let tick = 0;
+    const ids = ["search-one", "product-one", "refinement-one", "search-two", "product-two"];
+    const service = new BasketService(new FileBasketRepository(storePath), {
+      clock: () => `2026-06-19T03:00:0${tick++}.000Z`,
+      idGenerator: () => ids.shift() || "fallback-id",
+    });
+
+    await service.setContext({
+      title: "Studio speakers",
+      intent: "Find compact desktop speakers",
+      currency: "EUR",
+      startNewSearch: true,
+    });
+    await service.upsertItem({ product: { title: "Original speaker" } });
+
+    const requested = await service.requestSearchRefinement(
+      "search-one",
+      "Prioritize wired inputs and a lower price.",
+    );
+    assert.equal(requested?.request.id, "refinement-one");
+    assert.equal(requested?.request.searchSnapshot.items[0].product.title, "Original speaker");
+
+    await service.setContext({
+      title: "Studio speakers with wired input",
+      intent: "Find compact desktop speakers with wired inputs at a lower price",
+      currency: "EUR",
+      startNewSearch: true,
+      refinementOfSearchId: "search-one",
+      refinementRequestId: "refinement-one",
+    });
+    await service.upsertItem({ product: { title: "Refined speaker" } });
+
+    const inProgress = await service.getSearchRefinementRequest("refinement-one");
+    assert.equal(inProgress?.request.status, "in_progress");
+    assert.equal(inProgress?.request.refinedSearchId, "search-two");
+    assert.equal(inProgress?.request.searchSnapshot.items[0].product.title, "Original speaker");
+
+    await service.completeSearchRefinementRequest("refinement-one", "Recorded one lower-cost wired option.", "search-two");
+    const restored = await new BasketService(new FileBasketRepository(storePath)).load();
+    const completed = restored.decisionBasket.refinementRequests[0];
+
+    assert.equal(completed.status, "completed");
+    assert.equal(completed.refinedSearchId, "search-two");
+    assert.equal(completed.searchSnapshot.items[0].product.title, "Original speaker");
+    assert.equal(restored.decisionBasket.searches[1].refinementOfSearchId, "search-one");
+    assert.equal(restored.decisionBasket.searches[1].items[0].product.title, "Refined speaker");
+  });
+});

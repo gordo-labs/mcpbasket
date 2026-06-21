@@ -17,6 +17,7 @@ The local viewer/API is intended for the local agent runtime and a browser on th
 | `DELETE` | `/api/items/:id` | removal result and summary | Remove a candidate. |
 | `POST` | `/api/decisions` | decision and summaries | Save a user-confirmed candidate as a permanent final decision. |
 | `DELETE` | `/api/decisions/:id` | removal result and summary | Remove a permanent decision without deleting research. |
+| `POST` | `/api/searches/:id/refinements` | persisted refinement request | Save a prompt and immutable snapshot for a linked new search; dispatches locally only when configured. |
 | `POST` | `/api/clear` | compact basket summary | Clear items with confirmation. |
 
 ## Error Semantics
@@ -67,5 +68,14 @@ POST /api/clear
 ```
 
 Save a final decision with `POST /api/decisions` and `{ "itemId": "candidate-id", "searchId": "saved-search-id", "confirm": true }`.
+
+Create a saved-search refinement:
+
+```json
+POST /api/searches/saved-search-id/refinements
+{ "prompt": "Keep the same requirements but only show options under 100 EUR." }
+```
+
+The response is `202 Accepted` with a `refinement` record that contains the immutable `searchSnapshot`. The source search is never overwritten. When `MCPBASKET_REFINEMENT_HERMES_COMMAND` is configured on the viewer process, `dispatched` is `true` after a local Hermes process has started; otherwise the request remains queued for an MCP agent.
 
 `confirm` is mandatory. The selected product is copied into `decisionBasket.items`; it survives new search contexts and clearing the active research queue. Each distinct context set through `/api/context` records a candidate snapshot in `decisionBasket.searches`.

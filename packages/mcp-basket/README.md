@@ -2,7 +2,7 @@
 
 Model Context Protocol server for a neutral pre-checkout basket.
 
-The basket lets an agent collect product candidates while researching online stores, preserve each search as a local snapshot, collect final decisions across searches, show them in a local viewer, and only later export approved items into generic checkout line items.
+The basket lets an agent collect product candidates while researching online stores, preserve each search as a local snapshot, refine a saved search into a linked new response, collect final decisions across searches, show them in a local viewer, and only later export approved items into generic checkout line items.
 
 ## Architecture
 
@@ -12,7 +12,7 @@ See [`docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md) and [`docs/HTTP-API.md`
 
 ## What It Includes
 
-- MCP tools to set basket context, add products, review candidates, save explicit final decisions, remove items, and export checkout line items.
+- MCP tools to set basket context, add products, process persisted search refinements, review candidates, save explicit final decisions, remove items, and export checkout line items.
 - Local JSON persistence under `.mcpbasket/basket.json` by default.
 - Local HTTP API and built-in viewer for the machine running the agent.
 - Generic `lineItems` export for a separate checkout integration.
@@ -76,6 +76,7 @@ DELETE /api/items/:id
 GET    /api/decisions
 POST   /api/decisions
 DELETE /api/decisions/:id
+POST   /api/searches/:id/refinements
 POST   /api/clear
 ```
 
@@ -123,9 +124,12 @@ MCPBASKET_PORT=4377
 MCPBASKET_STORE_PATH=.mcpbasket/basket.json
 MCPBASKET_BIND_HOST=127.0.0.1
 MCPBASKET_VIEWER_URL=http://127.0.0.1:4377
+MCPBASKET_REFINEMENT_HERMES_COMMAND=/absolute/path/to/hermes
 ```
 
 `MCPBASKET_BIND_HOST` controls the network interface where the local viewer listens. `MCPBASKET_VIEWER_URL` controls the URL returned to the agent and should be set independently when accessing the viewer through a private network, reverse proxy, or tunnel. For example, a Tailscale-only installation can bind to the machine's Tailscale IP and set the viewer URL to its MagicDNS hostname.
+
+`MCPBASKET_REFINEMENT_HERMES_COMMAND` is optional and belongs only to the supervised viewer process. When set, the viewer dispatches a submitted saved-search refinement through `hermes --oneshot`; the spawned agent must load the immutable source snapshot with `basket-get-refinement-request`, create a linked new search, and complete the request. When unset, refinements remain durably queued for a compatible agent to recover.
 
 Only set `product.urls.product` and `product.identifiers.sourceUrl` when the agent has validated the direct product page. The viewer opens only sources marked with `product.evidence.linkValidation.status: "verified"`; preserve blocked or unverified URLs in `evidence.linkValidation.observedUrl` instead.
 

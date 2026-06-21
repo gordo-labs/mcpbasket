@@ -16,7 +16,8 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
       sort: "recommended",
       toastTimer: null,
       sourceOpener: null,
-      productOpener: null
+      productOpener: null,
+      refinementSubmitting: false
     };
 
     var STATUS_LABELS = {
@@ -222,6 +223,10 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
       return asArray(decisionBasket().searches);
     }
 
+    function refinementRequests() {
+      return asArray(decisionBasket().refinementRequests);
+    }
+
     function selectedSearch() {
       var searches = savedSearches();
       if (!searches.length) return null;
@@ -289,6 +294,42 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
       }).join("");
       element("previous-search").disabled = currentIndex <= 0;
       element("next-search").disabled = currentIndex < 0 || currentIndex >= searches.length - 1;
+    }
+
+    function renderRefinementForm(search) {
+      var form = element("refinement-form");
+      var input = element("refinement-prompt");
+      var submit = element("refinement-submit");
+      var status = element("refinement-status");
+      var latest = search
+        ? refinementRequests().filter(function (request) { return request.searchId === search.id; }).slice(-1)[0]
+        : null;
+
+      form.dataset.searchId = search ? search.id : "";
+      input.disabled = !search || state.refinementSubmitting;
+      submit.disabled = !search || state.refinementSubmitting;
+      input.placeholder = search ? "Add criteria or change the direction" : "Select a saved search first";
+      submit.textContent = state.refinementSubmitting ? "Sending" : "Refine";
+      status.className = "";
+
+      if (!search) {
+        status.textContent = "No saved research selected";
+        return;
+      }
+      if (!latest) {
+        status.textContent = "Creates a linked new search";
+        return;
+      }
+
+      var labels = {
+        queued: "Queued",
+        dispatched: "Sent to agent",
+        in_progress: "Agent refining",
+        completed: "Refined",
+        failed: "Could not start"
+      };
+      status.textContent = labels[latest.status] || "Saved";
+      status.className = "is-" + String(latest.status || "").replace(/_/g, "-");
     }
 
     function setWorkspaceView(view) {
@@ -666,6 +707,7 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
       element("stat-total-detail").textContent = Object.keys(totalByCurrency(items)).length ? "Across priced options" : "Prices not captured";
       updateTabs(items);
       renderSearchNavigator();
+      renderRefinementForm(search);
       renderSearchesWorkspace();
       renderMainBasketWorkspace();
       renderSourcePage();
@@ -709,6 +751,41 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
       } catch (error) {
         setSyncStatus("Sync failed", "is-error");
         showToast(error instanceof Error ? error.message : "The local basket could not be loaded.", true);
+      }
+    }
+
+    async function requestSearchRefinement() {
+      var search = selectedSearch();
+      var input = element("refinement-prompt");
+      var prompt = String(input.value || "").trim();
+      if (!search) {
+        showToast("Choose a saved search before refining it.", true);
+        return;
+      }
+      if (!prompt) {
+        input.focus();
+        showToast("Add refinement criteria first.", true);
+        return;
+      }
+
+      state.refinementSubmitting = true;
+      render(state.basket || { context: {}, items: [] });
+      try {
+        var response = await fetch("/api/searches/" + encodeURIComponent(search.id) + "/refinements", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt: prompt })
+        });
+        var payload = await response.json();
+        if (!response.ok) throw new Error(payload && payload.error ? payload.error : "The refinement could not be saved.");
+        input.value = "";
+        showToast(payload.dispatched ? "Refinement sent to the agent." : "Refinement saved and queued.", false);
+        await loadBasket();
+      } catch (error) {
+        showToast(error instanceof Error ? error.message : "The refinement could not be saved.", true);
+      } finally {
+        state.refinementSubmitting = false;
+        if (state.basket) render(state.basket);
       }
     }
 
@@ -966,6 +1043,11 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
     element("search").addEventListener("input", function (event) {
       state.search = String(event.target.value || "").trim().toLocaleLowerCase();
       render(state.basket || { context: {}, items: [] });
+    });
+
+    element("refinement-form").addEventListener("submit", function (event) {
+      event.preventDefault();
+      requestSearchRefinement();
     });
 
     element("sort").addEventListener("change", function (event) {

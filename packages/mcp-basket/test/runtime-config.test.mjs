@@ -7,10 +7,12 @@ test("viewer URL can differ from the interface used by the local server", () => 
     MCPBASKET_PORT: "4377",
     MCPBASKET_BIND_HOST: "100.113.42.7",
     MCPBASKET_VIEWER_URL: "http://sergios-mac-studio.tailc3a82a.ts.net:4377",
+    MCPBASKET_REFINEMENT_HERMES_COMMAND: "/usr/local/bin/hermes",
   });
 
   assert.equal(config.viewer.host, "100.113.42.7");
   assert.equal(config.viewer.url, "http://sergios-mac-studio.tailc3a82a.ts.net:4377");
+  assert.equal(config.refinement.hermesCommand, "/usr/local/bin/hermes");
   assert.equal(
     getBasketLinks(config).api.basket,
     "http://sergios-mac-studio.tailc3a82a.ts.net:4377/api/basket",

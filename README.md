@@ -7,6 +7,7 @@ It never creates an order.
 ## What An Agent Gets
 
 - One saved search per research response, including its creation time and complete candidate snapshot.
+- A search-specific refinement input that preserves the original snapshot and creates a linked new research response.
 - A verified product source and optional product image when the agent can observe them.
 - A persistent Main basket that can collect selected products from any saved search.
 - A local viewer with Research (`/`), saved Searches (`/searches`), Main basket (`/basket`), and verified-source viewing.
@@ -68,6 +69,16 @@ npm run viewer
 
 Open `http://127.0.0.1:4377/health` and expect `{ "ok": true }`.
 
+### Optional: route viewer refinements back to Hermes
+
+The viewer always persists the entered refinement prompt and the full source-search snapshot before dispatching anything. To make the local viewer launch a Hermes one-shot run automatically, configure the **viewer process** with the absolute Hermes command:
+
+```bash
+export MCPBASKET_REFINEMENT_HERMES_COMMAND="$(command -v hermes)"
+```
+
+With that opt-in setting, a refinement starts `hermes --oneshot` in the background. The spawned agent receives only a refinement id, then loads the stored user prompt and immutable source snapshot through MCP before it creates a linked new search. Leave the variable unset to keep requests queued for an agent to recover with `basket-list-refinement-requests`.
+
 ### 4. Register the MCP server with the agent
 
 Use the built entrypoint and repeat the same environment values, especially `MCPBASKET_STORE_PATH`:
@@ -109,6 +120,7 @@ The skill requires the agent to:
 3. Save the image only when it loads and belongs to that product.
 4. Keep failed links as evidence and mark the candidate `needs_review` rather than exposing a broken source.
 5. Add to the Main basket only after an explicit user choice.
+6. When processing a refinement, load its persisted request first and create a linked new search instead of modifying the original search.
 
 ### 6. Smoke test
 
@@ -117,6 +129,7 @@ Use the MCP host's connection test, then ask the agent to research a product. Co
 - A search appears in `/searches` with its timestamp and candidate count.
 - A verified product source opens in the viewer.
 - Adding a product appears in `/basket` and survives a viewer restart.
+- Entering refinement criteria on a saved search creates a queued or dispatched refinement with the original snapshot retained.
 
 The viewer is loopback-only by default. It is an MVP inspection surface, not a public sharing service. A private-network setup can bind to a private interface and set a matching `MCPBASKET_VIEWER_URL`; authentication, public sharing, and payments remain out of scope.
 

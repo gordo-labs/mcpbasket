@@ -26,6 +26,7 @@ test("viewer HTTP API validates input and persists a candidate", async () => {
       assert.match(researchPage, /data-initial-view="research"/);
       assert.match(researchPage, /id="source-modal-frame"/);
       assert.match(researchPage, /data-source-modal="true"/);
+      assert.match(researchPage, /id="refinement-form"/);
 
       const mainBasketPageResponse = await fetch(`${baseUrl}/basket`);
       assert.equal(mainBasketPageResponse.status, 200);
@@ -49,6 +50,17 @@ test("viewer HTTP API validates input and persists a candidate", async () => {
       assert.match(searchesPage, /data-initial-view="searches"/);
       assert.match(searchesPage, /id="search-page-items"/);
       assert.match(searchesPage, /id="product-modal"/);
+
+      const contextResponse = await fetch(`${baseUrl}/api/context`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: "Travel mug research",
+          intent: "Find a durable travel mug",
+          startNewSearch: true,
+        }),
+      });
+      assert.equal(contextResponse.status, 200);
 
       const createResponse = await fetch(`${baseUrl}/api/items`, {
         method: "POST",
@@ -78,6 +90,18 @@ test("viewer HTTP API validates input and persists a candidate", async () => {
       const rawBasket = await rawBasketResponse.json();
       assert.equal(rawBasket.items[0].product.identifiers.sourceUrl, "https://example.com/products/travel-mug");
       assert.equal(rawBasket.items[0].product.images[0].url, "https://example.com/images/travel-mug.jpg");
+
+      const refinementResponse = await fetch(`${baseUrl}/api/searches/${rawBasket.activeSearchId}/refinements`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: "Only consider leakproof options under 30 EUR." }),
+      });
+      assert.equal(refinementResponse.status, 202);
+      const refinement = await refinementResponse.json();
+      assert.equal(refinement.dispatched, false);
+      assert.equal(refinement.refinement.status, "queued");
+      assert.equal(refinement.refinement.searchSnapshot.id, rawBasket.activeSearchId);
+      assert.equal(refinement.refinement.searchSnapshot.items[0].product.title, "Travel mug");
 
       const missingConfirmation = await fetch(`${baseUrl}/api/decisions`, {
         method: "POST",
