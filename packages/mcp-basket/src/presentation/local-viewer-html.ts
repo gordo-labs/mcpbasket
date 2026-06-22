@@ -227,8 +227,8 @@ export function renderBasketViewerHtml(options: { initialView?: BasketViewerView
               <h3 id="checkout-heading">Ready when you are</h3>
               <p id="checkout-panel-detail">Select products from research to start a checkout.</p>
               <div class="checkout-panel-total" id="checkout-panel-total">-</div>
-              <button class="checkout-button" id="desktop-checkout" type="button" data-action="checkout">Checkout with Crossmint</button>
-              <p class="checkout-placeholder">Crossmint is not connected in this local MVP. No order or payment will be created.</p>
+              <button class="checkout-button" id="desktop-checkout" type="button" data-action="checkout">Checkout</button>
+              <p class="checkout-placeholder">No checkout provider is connected in this local MVP. No order or payment will be created.</p>
             </section>
             <section class="search-history" aria-labelledby="history-heading">
               <p class="eyebrow">Saved research</p>
@@ -250,9 +250,9 @@ export function renderBasketViewerHtml(options: { initialView?: BasketViewerView
   <div class="checkout-modal" id="checkout-modal" hidden role="dialog" aria-modal="true" aria-labelledby="checkout-modal-title">
     <div class="checkout-modal-card">
       <button class="modal-close" type="button" data-action="close-checkout" aria-label="Close checkout placeholder">&#215;</button>
-      <p class="eyebrow">Crossmint checkout</p>
+      <p class="eyebrow">Checkout</p>
       <h2 id="checkout-modal-title">Checkout is not connected yet</h2>
-      <p id="checkout-modal-copy">Your selected products remain in the local main basket. This placeholder will open Crossmint once the checkout integration and validation flow are configured.</p>
+      <p id="checkout-modal-copy">Your selected products remain in the local main basket. This placeholder will open the checkout flow once the integration and validation are configured.</p>
       <div class="checkout-modal-summary" id="checkout-modal-summary"></div>
       <button class="secondary-button" type="button" data-action="close-checkout">Back to main basket</button>
     </div>

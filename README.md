@@ -11,7 +11,7 @@ It never creates an order.
 - A verified product source and optional product image when the agent can observe them.
 - A persistent Main basket that can collect selected products from any saved search.
 - A local viewer with Research (`/`), saved Searches (`/searches`), Main basket (`/basket`), and verified-source viewing.
-- A checkout placeholder only. Crossmint or any other checkout provider must be connected separately.
+- A checkout placeholder only. A checkout provider must be connected separately.
 
 ## Packages
 
