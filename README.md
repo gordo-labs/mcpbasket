@@ -50,22 +50,22 @@ Use Node.js 20 or newer. Keep the repository in a stable location: the MCP confi
 
 The viewer and the MCP server must use **the same absolute** `MCPBASKET_STORE_PATH`. This is what makes research history and the Main basket survive process restarts and remain visible in the viewer.
 
+Copy `.env.example` to `.env` and set an absolute path:
+
 ```bash
-export MCPBASKET_STORE_PATH="$HOME/.local/share/mcpbasket/basket.json"
-export MCPBASKET_PORT=4377
-export MCPBASKET_BIND_HOST=127.0.0.1
-export MCPBASKET_VIEWER_URL="http://127.0.0.1:4377"
+cp .env.example .env
+# Edit .env to set MCPBASKET_STORE_PATH to an absolute path on your machine.
 ```
+
+The `.env` file is optional. When the MCP server is launched by an agent host (Hermes, Claude, etc.), the host already injects `MCPBASKET_STORE_PATH` via its MCP server configuration — the `.env` is only a convenience for running the viewer directly during development.
 
 ### 3. Start the local viewer
 
 ```bash
-MCPBASKET_STORE_PATH="$MCPBASKET_STORE_PATH" \
-MCPBASKET_PORT="$MCPBASKET_PORT" \
-MCPBASKET_BIND_HOST="$MCPBASKET_BIND_HOST" \
-MCPBASKET_VIEWER_URL="$MCPBASKET_VIEWER_URL" \
 npm run viewer
 ```
+
+The viewer reads `MCPBASKET_STORE_PATH` from the environment. If not set, it falls back to `.env` in the repo root, then to `$CWD/.mcpbasket/basket.json`.
 
 Open `http://127.0.0.1:4377/health` and expect `{ "ok": true }`.
 

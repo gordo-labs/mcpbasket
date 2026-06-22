@@ -7,11 +7,13 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { createBasketRuntime } from "./runtime/index.js";
 import { createMcpBasketServer } from "./transports/mcp/index.js";
 
-// Load .env from repo root (walk up from script location).
-// build/index.js → packages/mcp-basket → repo root
-const scriptDir = dirname(resolve(process.argv[1] || ""));
-const repoRoot = resolve(scriptDir, "..", "..", "..");
-dotenv.config({ path: resolve(repoRoot, ".env"), override: true });
+// Load .env only when MCPBASKET_STORE_PATH is not already set (agent provides it via MCP config).
+if (!process.env.MCPBASKET_STORE_PATH) {
+  // Walk up from the script location to find repo root and its .env.
+  const scriptDir = dirname(resolve(process.argv[1] || ""));
+  const repoRoot = resolve(scriptDir, "..", "..", "..");
+  dotenv.config({ path: resolve(repoRoot, ".env") });
+}
 
 async function main() {
   const server = createMcpBasketServer(createBasketRuntime());

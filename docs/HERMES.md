@@ -15,9 +15,15 @@ npm run verify
 
 Choose a persistent absolute path. The viewer process and the Hermes MCP entry must use this exact same value.
 
+Copy `.env.example` to `.env` and set the path:
+
 ```bash
-export MCPBASKET_STORE_PATH="$HOME/.local/share/mcpbasket/basket.json"
+cp .env.example .env
+# Edit MCPBASKET_STORE_PATH to an absolute path, e.g.:
+# MCPBASKET_STORE_PATH=$HOME/.local/share/mcpbasket/basket.json
 ```
+
+The `.env` is a convenience for running the viewer directly. Hermes injects `MCPBASKET_STORE_PATH` via its MCP server config below.
 
 ## 3. Register the MCP server
 
@@ -58,25 +64,18 @@ Restart Hermes after the link is created. The skill is mandatory for the intende
 
 ## 5. Start the viewer
 
-Run this from the repository root in a supervised process or service manager:
+From the repository root:
 
 ```bash
-MCPBASKET_STORE_PATH="$MCPBASKET_STORE_PATH" \
-MCPBASKET_PORT=4377 \
-MCPBASKET_BIND_HOST=127.0.0.1 \
-MCPBASKET_VIEWER_URL=http://127.0.0.1:4377 \
 npm run viewer
 ```
 
-To make the refinement input in the viewer launch Hermes automatically, add this environment variable to the **viewer service** (not the Hermes MCP entry):
+The viewer reads `MCPBASKET_STORE_PATH` from the environment. If not set, it falls back to `.env` in the repo root, then to `$CWD/.mcpbasket/basket.json`. Because Hermes already injects the variable via its MCP config, the viewer will automatically use the same store as the agent without extra setup.
+
+To make the refinement input in the viewer launch Hermes automatically, set this in `.env`:
 
 ```bash
-MCPBASKET_REFINEMENT_HERMES_COMMAND="$(command -v hermes)" \
-MCPBASKET_STORE_PATH="$MCPBASKET_STORE_PATH" \
-MCPBASKET_PORT=4377 \
-MCPBASKET_BIND_HOST=127.0.0.1 \
-MCPBASKET_VIEWER_URL=http://127.0.0.1:4377 \
-npm run viewer
+MCPBASKET_REFINEMENT_HERMES_COMMAND=/usr/local/bin/hermes
 ```
 
 The request is saved first with the original search snapshot. Hermes receives a refinement id, calls `basket-get-refinement-request`, records a linked new search, and calls `basket-complete-refinement-request`. Leave the command unset when refinements should remain queued for a later agent run.

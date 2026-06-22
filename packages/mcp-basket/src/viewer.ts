@@ -8,11 +8,13 @@ import { startBasketViewer } from "./transports/http/index.js";
 
 export { startBasketViewer } from "./transports/http/index.js";
 
-// Load .env from repo root (walk up from script location).
-// build/viewer.js → packages/mcp-basket → repo root
-const scriptDir = dirname(resolve(process.argv[1] || ""));
-const repoRoot = resolve(scriptDir, "..", "..", "..");
-dotenv.config({ path: resolve(repoRoot, ".env"), override: true });
+// Load .env only when MCPBASKET_STORE_PATH is not already set (agent provides it via MCP config).
+if (!process.env.MCPBASKET_STORE_PATH) {
+  // Walk up from the script location to find repo root and its .env.
+  const scriptDir = dirname(resolve(process.argv[1] || ""));
+  const repoRoot = resolve(scriptDir, "..", "..", "..");
+  dotenv.config({ path: resolve(repoRoot, ".env") });
+}
 
 if (process.argv[1] != null && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const runtime = createBasketRuntime();

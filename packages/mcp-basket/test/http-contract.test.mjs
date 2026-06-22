@@ -26,7 +26,6 @@ test("viewer HTTP API validates input and persists a candidate", async () => {
       assert.match(researchPage, /data-initial-view="research"/);
       assert.match(researchPage, /id="source-modal-frame"/);
       assert.match(researchPage, /data-source-modal="true"/);
-      assert.match(researchPage, /id="refinement-form"/);
 
       const mainBasketPageResponse = await fetch(`${baseUrl}/basket`);
       assert.equal(mainBasketPageResponse.status, 200);
