@@ -1,6 +1,6 @@
 ---
 name: mcpbasket
-description: Use when an agent researches, compares, shortlists, or prepares products or services for purchase; when it needs a neutral pre-checkout basket, product candidates, a hosted basket preview, MCP basket tools, or generic checkout line-item export before a user-approved purchase. Also use when installing or operating the mcpbasket MCP and Vercel viewer.
+description: Use when an agent researches, recommends, compares, shortlists, prices, or prepares products or services for a possible purchase; when it needs a neutral pre-checkout basket, product candidates, MCP basket tools, a local basket preview, or generic checkout line-item export before a user-approved purchase. Also use when installing or operating the local mcpbasket MCP and viewer.
 ---
 
 # MCPBasket
@@ -8,6 +8,12 @@ description: Use when an agent researches, compares, shortlists, or prepares pro
 ## Core Rule
 
 Use the basket as the default pre-purchase workspace. Do not call any real checkout tool unless the user explicitly approves the exact product, merchant, price or estimate, quantity, delivery destination, and payment path.
+
+## Prompt Routing
+
+Treat a request as basket work when it asks to find, recommend, compare, shortlist, price, or source a potentially purchasable product or service. The user does not need to say "basket". Set context and save viable results while researching.
+
+Do not stop for optional missing details: use known context, record unknown or estimated data accurately, and ask only when the missing information materially changes the candidates. For reusable prompt templates, examples, and capture rules, read `references/prompting.md`.
 
 ## Package
 
@@ -65,7 +71,7 @@ MCPBASKET_STORE_PATH=.mcpbasket/basket.json
 - `basket-update-status`: move candidate state.
 - `basket-remove-product`: remove a candidate.
 - `basket-clear`: clear basket with confirmation.
-- `basket-get-viewer`: get local and hosted viewer URLs and API endpoints.
+- `basket-get-viewer`: get the local viewer URL, API endpoints, and startup command.
 - `basket-export-checkout-line-items`: prepare generic checkout line items.
 
 ## Data Quality

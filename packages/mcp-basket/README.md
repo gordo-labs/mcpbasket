@@ -2,7 +2,7 @@
 
 Model Context Protocol server for a neutral pre-checkout basket.
 
-The basket lets an agent collect product candidates while researching online stores, show those candidates in a local or hosted viewer, and only later export approved items into generic checkout line items.
+The basket lets an agent collect product candidates while researching online stores, show those candidates in the local viewer, and only later export approved items into generic checkout line items.
 
 ## Architecture
 

@@ -1,4 +1,4 @@
 interface:
   display_name: "MCPBasket"
   short_description: "Pre-checkout basket for agent commerce"
-  default_prompt: "Use MCPBasket to collect, review, and prepare product candidates before checkout."
+  default_prompt: "Research product candidates, add viable options to MCPBasket with evidence, and never purchase without explicit approval."
