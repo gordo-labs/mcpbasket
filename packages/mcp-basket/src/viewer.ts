@@ -8,11 +8,11 @@ import { startBasketViewer } from "./transports/http/index.js";
 
 export { startBasketViewer } from "./transports/http/index.js";
 
-// Load .env from repo root regardless of CWD.
-// build/viewer.js → build/ → packages/mcp-basket/ → packages/ → repo root
-const viewerDir = dirname(pathToFileURL(import.meta.url).pathname);
-const projectRoot = resolve(viewerDir, "..", "..", "..");
-dotenv.config({ path: resolve(projectRoot, ".env"), override: true });
+// Load .env from repo root (walk up from script location).
+// build/viewer.js → packages/mcp-basket → repo root
+const scriptDir = dirname(resolve(process.argv[1] || ""));
+const repoRoot = resolve(scriptDir, "..", "..", "..");
+dotenv.config({ path: resolve(repoRoot, ".env"), override: true });
 
 if (process.argv[1] != null && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const runtime = createBasketRuntime();

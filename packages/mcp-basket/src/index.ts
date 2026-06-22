@@ -7,11 +7,11 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { createBasketRuntime } from "./runtime/index.js";
 import { createMcpBasketServer } from "./transports/mcp/index.js";
 
-// Load .env from repo root regardless of CWD.
-// build/index.js → build/ → packages/mcp-basket/ → packages/ → repo root
-const mcpDir = dirname(pathToFileURL(import.meta.url).pathname);
-const projectRoot = resolve(mcpDir, "..", "..", "..");
-dotenv.config({ path: resolve(projectRoot, ".env"), override: true });
+// Load .env from repo root (walk up from script location).
+// build/index.js → packages/mcp-basket → repo root
+const scriptDir = dirname(resolve(process.argv[1] || ""));
+const repoRoot = resolve(scriptDir, "..", "..", "..");
+dotenv.config({ path: resolve(repoRoot, ".env"), override: true });
 
 async function main() {
   const server = createMcpBasketServer(createBasketRuntime());
