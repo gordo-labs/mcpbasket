@@ -218,6 +218,19 @@ export const LOCAL_VIEWER_STYLES = String.raw`
   }
   .refinement-submit:hover:not(:disabled) { border-color: var(--teal-dark); background: var(--teal-dark); }
   .refinement-submit:disabled { cursor: not-allowed; opacity: 0.52; }
+  .refinement-coming-soon {
+    max-width: 720px;
+    margin-top: 14px;
+    padding: 10px 14px;
+    border: 1px dashed var(--line-strong);
+    border-radius: 7px;
+    background: var(--paper);
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 650;
+  }
+  .refinement-coming-soon a { color: var(--blue); text-decoration: underline; text-underline-offset: 2px; }
+  .refinement-coming-soon a:hover { color: var(--teal-dark); }
   h1, h2, h3, p { overflow-wrap: anywhere; }
   h1 {
     margin: 7px 0 0;
@@ -984,6 +997,7 @@ export const LOCAL_VIEWER_STYLES = String.raw`
     .refinement-form { margin-top: 16px; }
     .refinement-form-controls { align-items: stretch; flex-direction: column; }
     .refinement-submit { width: 100%; }
+    .refinement-coming-soon { margin-top: 16px; font-size: 11px; }
     h1 { font-size: 27px; }
     .summary-band { margin-top: 24px; }
     .metric { padding: 15px 14px; }
