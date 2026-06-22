@@ -121,7 +121,8 @@ Minimal product candidate:
 
 ```bash
 MCPBASKET_PORT=4377
-MCPBASKET_STORE_PATH=.mcpbasket/basket.json
+# Must be absolute so MCP and viewer share the same file.
+MCPBASKET_STORE_PATH=/absolute/path/to/mcpbasket/.mcpbasket/basket.json
 MCPBASKET_BIND_HOST=127.0.0.1
 MCPBASKET_VIEWER_URL=http://127.0.0.1:4377
 MCPBASKET_REFINEMENT_HERMES_COMMAND=/absolute/path/to/hermes

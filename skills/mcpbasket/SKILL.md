@@ -36,7 +36,8 @@ Useful environment variables:
 
 ```bash
 MCPBASKET_PORT=4377
-MCPBASKET_STORE_PATH=.mcpbasket/basket.json
+# Must be an absolute path so the MCP server and viewer share the same file.
+MCPBASKET_STORE_PATH=/absolute/path/to/mcpbasket/.mcpbasket/basket.json
 ```
 
 ## Workflow

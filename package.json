@@ -10,7 +10,7 @@
     "mcp": "npm --workspace packages/mcp-basket run mcpbasket",
     "test": "npm --workspace packages/mcp-basket run test",
     "verify": "npm run build && npm run test",
-    "viewer": "npm --workspace packages/mcp-basket run basket-viewer"
+    "viewer": "node packages/mcp-basket/build/viewer.js"
   },
   "keywords": [
     "mcp",
