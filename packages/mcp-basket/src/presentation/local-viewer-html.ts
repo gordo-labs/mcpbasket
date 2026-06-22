@@ -61,17 +61,7 @@ export function renderBasketViewerHtml(options: { initialView?: BasketViewerView
           <h1 id="basket-title">Agent Basket</h1>
           <p class="intent" id="intent">Preparing the local research workspace.</p>
           <div class="context-chips" id="context-chips" aria-label="Basket context"></div>
-          <div class="refinement-form" id="refinement-form" hidden>
-            <div class="refinement-form-copy">
-              <label for="refinement-prompt">Refine this research</label>
-              <span id="refinement-status" role="status"></span>
-            </div>
-            <div class="refinement-form-controls">
-              <input id="refinement-prompt" type="text" autocomplete="off" maxlength="10000" placeholder="Add criteria or change the direction">
-              <button class="refinement-submit" id="refinement-submit" type="submit">Refine</button>
-            </div>
-          </div>
-          <p class="refinement-coming-soon" id="refinement-coming-soon" role="status">🔬 Research refinement coming soon — <a href="https://github.com/gordo-labs/mcpbasket/issues/4" target="_blank" rel="noopener">track progress</a></p>
+
         </div>
 
         <dl class="summary-band" aria-label="Basket summary">
