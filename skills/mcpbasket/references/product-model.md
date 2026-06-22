@@ -14,6 +14,14 @@ Use this map when filling `basket-upsert-product.item`.
 
 ## Product Snapshot
 
+### Required Capture For Online Candidates
+
+- Save the direct product page in `urls.product` and mirror it in `identifiers.sourceUrl` only after it has been verified.
+- Save the primary product image in `urls.image` or `images[0].url` with descriptive `alt` text only when it loads and belongs to the verified product page.
+- Keep the link and image tied to the same product variant. Never use a merchant homepage, search page, or unrelated image as a substitute.
+- If either asset cannot be observed, explain the gap in `evidence` and keep the item as `needs_review`.
+- Before treating a direct product URL as verified, open it and confirm it is the matching product-detail page. Record `evidence.linkValidation.status` (`verified`, `blocked`, or `unverified`), `checkedAt`, `observedUrl`, `finalUrl`, and a reason when it is not verified. Store a failed URL only in `evidence.linkValidation.observedUrl`; do not populate `urls.product` or `identifiers.sourceUrl` with it. Do not infer a verified link from a search result or URL pattern.
+
 - `title`, `subtitle`, `description`, `brand`, `category`, `condition`.
 - `merchant.name`, `merchant.domain`, `merchant.url`, `merchant.country`, `merchant.platform`, `merchant.sellerName`, `merchant.sellerId`.
 - `identifiers.sourceUrl`, `canonicalUrl`, `productLocator`, `sku`, `asin`, `gtin`, `upc`, `ean`, `isbn`, `mpn`, `productId`, `variantId`, `shopifyProductId`, `shopifyVariantId`.
@@ -26,7 +34,7 @@ Use this map when filling `basket-upsert-product.item`.
 - `fulfillment.type`, `shipsFrom`, `deliveryWindow`, `shippingSpeed`, `carrier`, `destinationCountry`, `requiresPhysicalAddress`.
 - `policy.returns`, `warranty`, `ageRestriction`, `regionRestrictions`, `subscriptionTerms`, `complianceNotes`.
 - `rating.value`, `scale`, `count`, `reviewSummary`.
-- `evidence.foundBy`, `query`, `reason`, `confidence`, `sources[]`.
+- `evidence.foundBy`, `query`, `reason`, `confidence`, `sources[]`, `linkValidation.status`, `linkValidation.checkedAt`, `linkValidation.observedUrl`, `linkValidation.finalUrl`, `linkValidation.reason`.
 
 ## Checkout
 
@@ -35,6 +43,10 @@ Use this map when filling `basket-upsert-product.item`.
 - `supported`: boolean.
 - `readiness`: `missing_locator`, `needs_validation`, `ready`, `blocked`, `unknown`.
 - `orderId`, `lastCheckedAt`, `notes`.
+
+## Permanent Decisions
+
+`decisionBasket.items[]` stores explicitly user-selected, approved product snapshots independently from the active research queue. Each entry keeps `sourceItemId`, `sourceSearchId`, `selectedAt`, and the originating `searchId` when known. `decisionBasket.searches[]` records distinct research contexts and their complete candidate snapshots, so final decisions remain traceable across searches.
 
 ## Minimal Example
 

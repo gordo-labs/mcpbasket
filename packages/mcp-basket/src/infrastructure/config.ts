@@ -11,6 +11,9 @@ export type BasketRuntimeConfig = {
     host: string;
     url: string;
   };
+  refinement: {
+    hermesCommand?: string;
+  };
 };
 
 export type BasketLinks = {
@@ -48,7 +51,10 @@ export function resolveBasketRuntimeConfig(
     viewer: {
       port,
       host: environment.MCPBASKET_BIND_HOST || "127.0.0.1",
-      url: `http://127.0.0.1:${port}`,
+      url: environment.MCPBASKET_VIEWER_URL || `http://127.0.0.1:${port}`,
+    },
+    refinement: {
+      hermesCommand: environment.MCPBASKET_REFINEMENT_HERMES_COMMAND?.trim() || undefined,
     },
   };
 }

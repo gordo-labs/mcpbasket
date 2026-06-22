@@ -2,6 +2,7 @@ import { BasketService, type BasketRepository } from "../application/index.js";
 import {
   FileBasketRepository,
   getBasketLinks,
+  HermesRefinementDispatcher,
   resolveBasketRuntimeConfig,
   type BasketLinks,
   type BasketRuntimeConfig,
@@ -11,6 +12,7 @@ export type BasketRuntime = {
   config: BasketRuntimeConfig;
   service: BasketService;
   links: BasketLinks;
+  refinementDispatcher: HermesRefinementDispatcher;
 };
 
 export function createBasketRuntime(options: {
@@ -25,5 +27,6 @@ export function createBasketRuntime(options: {
     config,
     service: new BasketService(repository),
     links: getBasketLinks(config),
+    refinementDispatcher: new HermesRefinementDispatcher(config.refinement.hermesCommand),
   };
 }

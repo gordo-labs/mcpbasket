@@ -122,12 +122,66 @@ export const BasketContextSchema = z
   })
   .passthrough();
 
+export const DecisionSearchSchema = z
+  .object({
+    id: z.string(),
+    context: BasketContextSchema,
+    items: z.array(CartItemSchema).default([]),
+    refinementOfSearchId: z.string().optional(),
+    refinementRequestId: z.string().optional(),
+    createdAt: z.string(),
+    updatedAt: z.string(),
+  })
+  .passthrough();
+
+export const SearchRefinementStatusSchema = z.enum(["queued", "dispatched", "in_progress", "completed", "failed"]);
+
+export const SearchRefinementRequestSchema = z
+  .object({
+    id: z.string(),
+    searchId: z.string(),
+    prompt: z.string().min(1).max(10_000),
+    searchSnapshot: DecisionSearchSchema,
+    status: SearchRefinementStatusSchema.default("queued"),
+    refinedSearchId: z.string().optional(),
+    summary: z.string().optional(),
+    error: z.string().optional(),
+    createdAt: z.string(),
+    updatedAt: z.string(),
+  })
+  .passthrough();
+
+export const DecisionBasketItemSchema = z
+  .object({
+    id: z.string(),
+    sourceItemId: z.string(),
+    sourceSearchId: z.string().optional(),
+    item: CartItemSchema,
+    searchId: z.string().optional(),
+    selectedAt: z.string(),
+    updatedAt: z.string(),
+  })
+  .passthrough();
+
+export const DecisionBasketSchema = z
+  .object({
+    id: z.string(),
+    items: z.array(DecisionBasketItemSchema).default([]),
+    searches: z.array(DecisionSearchSchema).default([]),
+    refinementRequests: z.array(SearchRefinementRequestSchema).default([]),
+    createdAt: z.string(),
+    updatedAt: z.string(),
+  })
+  .passthrough();
+
 export const BasketSchema = z
   .object({
     version: z.literal(1).default(1),
     id: z.string(),
     context: BasketContextSchema.default({}),
     items: z.array(CartItemSchema).default([]),
+    activeSearchId: z.string().optional(),
+    decisionBasket: DecisionBasketSchema.optional(),
     createdAt: z.string(),
     updatedAt: z.string(),
   })
@@ -135,6 +189,9 @@ export const BasketSchema = z
 
 export const BasketContextInputSchema = BasketContextSchema.extend({
   resetMissingFields: z.boolean().optional(),
+  startNewSearch: z.boolean().optional().describe("Create a new saved research session even when title and intent match the active search."),
+  refinementOfSearchId: z.string().optional().describe("Saved search id whose snapshot is being refined into this new search."),
+  refinementRequestId: z.string().optional().describe("Persisted refinement request that triggered this new search."),
 }).passthrough();
 
 export type CandidateStatus = z.infer<typeof CandidateStatusSchema>;
@@ -144,6 +201,11 @@ export type CartItem = z.infer<typeof CartItemSchema>;
 export type CartItemInput = z.infer<typeof CartItemInputSchema>;
 export type BasketContext = z.infer<typeof BasketContextSchema>;
 export type BasketContextInput = z.infer<typeof BasketContextInputSchema>;
+export type DecisionSearch = z.infer<typeof DecisionSearchSchema>;
+export type SearchRefinementStatus = z.infer<typeof SearchRefinementStatusSchema>;
+export type SearchRefinementRequest = z.infer<typeof SearchRefinementRequestSchema>;
+export type DecisionBasketItem = z.infer<typeof DecisionBasketItemSchema>;
+export type DecisionBasket = z.infer<typeof DecisionBasketSchema>;
 export type Basket = z.infer<typeof BasketSchema>;
 
 export type Money = Record<string, unknown> & {
@@ -155,12 +217,14 @@ export type Money = Record<string, unknown> & {
 export const BASKET_MODEL_FIELD_GUIDE = [
   "product.title, brand, category, condition, description",
   "product.merchant.name, domain, url, platform, sellerName",
-  "product.identifiers.sourceUrl, canonicalUrl, sku, asin, gtin, variantId, productLocator",
+  "product.identifiers.sourceUrl and product.urls.product only when linkValidation is verified; otherwise evidence.linkValidation.observedUrl",
   "product.price.current, list, discount, shipping, taxEstimate, totalEstimate",
   "product.availability.status, quantityAvailable, limitPerCustomer",
   "product.selectedOptions for size/color/storage/etc.",
   "product.fulfillment for shipping, pickup, digital delivery, and destination constraints",
   "product.policy for returns, warranty, restrictions, subscription terms",
-  "product.evidence for query, sources, confidence, and why it matches the user intent",
+  "product.evidence for query, sources, confidence, why it matches the user intent, and linkValidation status/checkedAt/observedUrl/finalUrl",
   "checkout.provider, locator, supported, readiness before any real purchase",
+  "decisionBasket.items for persistent final decisions and decisionBasket.searches for saved research contexts and candidate snapshots",
+  "decisionBasket.refinementRequests for persisted search-refinement prompts and immutable source-search snapshots",
 ] as const;

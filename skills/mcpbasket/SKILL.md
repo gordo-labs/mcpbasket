@@ -1,6 +1,6 @@
 ---
 name: mcpbasket
-description: Use when an agent researches, recommends, compares, shortlists, prices, or prepares products or services for a possible purchase; when it needs a neutral pre-checkout basket, product candidates, MCP basket tools, a local basket preview, or generic checkout line-item export before a user-approved purchase. Also use when installing or operating the local mcpbasket MCP and viewer.
+description: Use when an agent researches, recommends, compares, shortlists, prices, or prepares products or services for a possible purchase; when it needs a neutral pre-checkout basket, saved research sessions, durable final decisions, MCP basket tools, a local basket preview, or generic checkout line-item export before a user-approved purchase. Also use when installing or operating the local mcpbasket MCP and viewer.
 ---
 
 # MCPBasket
@@ -11,7 +11,7 @@ Use the basket as the default pre-purchase workspace. Do not call any real check
 
 ## Prompt Routing
 
-Treat a request as basket work when it asks to find, recommend, compare, shortlist, price, or source a potentially purchasable product or service. The user does not need to say "basket". Set context and save viable results while researching.
+Treat a request as basket work when it asks to find, recommend, compare, shortlist, price, or source a potentially purchasable product or service. The user does not need to say "basket". Set context before researching so MCPBasket saves the search session and its candidate snapshot.
 
 Do not stop for optional missing details: use known context, record unknown or estimated data accurately, and ask only when the missing information materially changes the candidates. For reusable prompt templates, examples, and capture rules, read `references/prompting.md`.
 
@@ -45,6 +45,7 @@ MCPBASKET_STORE_PATH=.mcpbasket/basket.json
    - `title`: short basket name
    - `intent`: user request and decision criteria
    - `currency`, `locale`, `destinationCountry`, `constraints`, `targetStores` when known
+   - Set `startNewSearch: true` once for every new agent research response. This creates a durable historical list immediately, even when its title or intent resembles a previous search. Do not set it while merely enriching the same response's candidate list.
 
 2. During research, save each plausible product with `basket-upsert-product`.
    - Add candidates early; refine fields as evidence improves.
@@ -56,12 +57,32 @@ MCPBASKET_STORE_PATH=.mcpbasket/basket.json
    - Evidence: query, reason it matches, sources, observed timestamp, confidence.
    - Checkout: `locator`, `supported`, `readiness`; set `missing_locator` when unknown.
 
+   For every online product, validate the direct product page before exposing it in the viewer. Only save a verified page in `product.urls.product` and `product.identifiers.sourceUrl`. Save a primary image in `product.urls.image` or `product.images[0].url` only when it loads and belongs to that product. MCPBasket mirrors compatible URL and image fields when one is provided. Do not substitute a search results link, merchant homepage, or unrelated image.
+
+   Validate every direct product link before saving it as verified:
+   - Open the URL with the available browser or web-navigation tool. Confirm that it resolves to a product-detail page and that the title, merchant, or selected variant matches the candidate.
+   - Record `product.evidence.linkValidation` with `status` (`verified`, `blocked`, or `unverified`), `checkedAt`, `observedUrl`, and `finalUrl` after redirects when known. Include a short reason if it is not verified. Preserve failed URLs only in `evidence.linkValidation.observedUrl`, never in a viewer-facing `urls.product` field.
+   - Never infer a valid product page from a search snippet, URL shape, merchant homepage, or a 404/empty/blocked response. Keep unverified candidates as `needs_review`; do not add them to the Main basket until the user explicitly accepts that uncertainty.
+   - Validate image URLs when an image is included. If the image does not load or cannot be tied to the product page, omit it and record the gap in evidence.
+
 4. Use `basket-list-products` after meaningful updates and report the local `viewerUrl` when the user is on the same machine as the agent.
    - The current MCP does not create a public basket URL.
    - Do not expose the local HTTP API or invent a remote sharing URL.
    - A future remote service will publish authenticated basket views after it has been explicitly configured.
 
 5. Use `basket-export-checkout-line-items` only for approved or `ready_for_checkout` items with valid locators. It prepares data; it does not place an order.
+
+6. When the user explicitly chooses a product as a final buying decision, call `basket-add-to-decision-basket` with `confirm: true`.
+   - This copies the approved product into the durable local decision basket; it remains when research context changes or the active basket is cleared.
+   - `basket-set-context` with `startNewSearch: true` creates a saved search session for that response. Its candidate list and selections persist immediately and remain available when later searches start.
+   - Pass `searchId` when selecting a product from a historical search. Use `basket-list-decision-basket` to review saved decisions and their originating searches. Removing a decision never removes its research candidate.
+   - Before adding a historical or current candidate, re-check `product.evidence.linkValidation`. Treat `blocked` and `unverified` as a review requirement, not checkout-ready evidence.
+
+7. When processing a saved-search refinement request:
+   - Call `basket-get-refinement-request` first. Its `sourceSearch` is the immutable persisted baseline and its `prompt` is the extra direction entered by the user. Treat both as required research context.
+   - Never edit, clear, or replace the source search. Create a distinct linked response with `basket-set-context`, `startNewSearch: true`, `refinementOfSearchId: request.searchId`, and `refinementRequestId: request.id`. Include the original constraints plus the refinement prompt in the new context.
+   - Research, validate direct source links and images, and record the resulting candidates normally. Do not purchase anything.
+   - After candidates have been stored, call `basket-complete-refinement-request` with the request id, the new saved search id, and a concise summary. If the run cannot finish, leave the request open so a later agent can recover it through `basket-list-refinement-requests`.
 
 ## MCP Tools
 
@@ -71,6 +92,13 @@ MCPBASKET_STORE_PATH=.mcpbasket/basket.json
 - `basket-update-status`: move candidate state.
 - `basket-remove-product`: remove a candidate.
 - `basket-clear`: clear basket with confirmation.
+
+- `basket-add-to-decision-basket`: save an explicitly selected candidate to the durable local decision basket.
+- `basket-list-decision-basket`: list final decisions and saved research sessions.
+- `basket-remove-from-decision-basket`: remove a final decision without deleting research.
+- `basket-list-refinement-requests`: find pending saved-search refinements, including interrupted requests.
+- `basket-get-refinement-request`: load the user prompt and immutable source-search snapshot for a refinement.
+- `basket-complete-refinement-request`: close a refinement after its linked search is recorded.
 - `basket-get-viewer`: get the local viewer URL, API endpoints, and startup command.
 - `basket-export-checkout-line-items`: prepare generic checkout line items.
 

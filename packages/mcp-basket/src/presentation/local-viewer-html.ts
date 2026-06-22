@@ -1,490 +1,290 @@
-import { BASKET_MODEL_FIELD_GUIDE } from "../domain/model.js";
+import { LOCAL_VIEWER_CLIENT } from "./local-viewer-client.js";
+import { LOCAL_VIEWER_STYLES } from "./local-viewer-styles.js";
 
-function safeJson(value: unknown): string {
-  return JSON.stringify(value).replace(/</g, "\\u003c");
+type BasketViewerView = "research" | "searches" | "main-basket" | "source-page";
+
+function escapeHtmlAttribute(value: string): string {
+  return value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-export function renderBasketViewerHtml(): string {
-  const modelFields = safeJson(BASKET_MODEL_FIELD_GUIDE);
+export function renderBasketViewerHtml(options: { initialView?: BasketViewerView; initialSearchId?: string; initialSourceUrl?: string; initialSourceTitle?: string } = {}): string {
+  const initialView = options.initialView === "main-basket" || options.initialView === "searches" || options.initialView === "source-page"
+    ? options.initialView
+    : "research";
+  const researchViewHidden = initialView === "research" ? "" : " hidden";
+  const searchesViewHidden = initialView === "searches" ? "" : " hidden";
+  const mainBasketViewHidden = initialView === "main-basket" ? "" : " hidden";
+  const sourcePageViewHidden = initialView === "source-page" ? "" : " hidden";
+  const initialSearchId = options.initialSearchId ? ` data-initial-search-id="${escapeHtmlAttribute(options.initialSearchId)}"` : "";
+  const initialSourceUrl = options.initialSourceUrl ? ` data-initial-source-url="${escapeHtmlAttribute(options.initialSourceUrl)}"` : "";
+  const initialSourceTitle = options.initialSourceTitle ? ` data-initial-source-title="${escapeHtmlAttribute(options.initialSourceTitle)}"` : "";
 
   return `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Agent Basket</title>
-  <style>
-    :root {
-      color-scheme: light;
-      --bg: #f6f7f3;
-      --surface: #ffffff;
-      --ink: #17201b;
-      --muted: #66716b;
-      --line: #d9dfd7;
-      --green: #146b4a;
-      --green-ink: #effaf3;
-      --blue: #2c5f9e;
-      --amber: #9b6515;
-      --red: #9f2d2d;
-      --shadow: 0 14px 40px rgba(20, 31, 26, 0.08);
-    }
-
-    * { box-sizing: border-box; }
-
-    body {
-      margin: 0;
-      min-height: 100vh;
-      background: var(--bg);
-      color: var(--ink);
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      letter-spacing: 0;
-    }
-
-    button, input, select { font: inherit; }
-
-    .app {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) 360px;
-      min-height: 100vh;
-    }
-
-    main {
-      padding: 28px;
-      min-width: 0;
-    }
-
-    aside {
-      border-left: 1px solid var(--line);
-      background: #fbfcf8;
-      padding: 24px;
-      min-width: 0;
-    }
-
-    .topbar {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 20px;
-      margin-bottom: 22px;
-    }
-
-    h1 {
-      margin: 0;
-      font-size: 30px;
-      line-height: 1.1;
-      font-weight: 750;
-    }
-
-    .intent {
-      margin: 8px 0 0;
-      color: var(--muted);
-      max-width: 840px;
-      line-height: 1.45;
-    }
-
-    .actions {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      flex-shrink: 0;
-    }
-
-    .icon-button {
-      width: 38px;
-      height: 38px;
-      border-radius: 7px;
-      border: 1px solid var(--line);
-      background: var(--surface);
-      color: var(--ink);
-      cursor: pointer;
-      box-shadow: 0 1px 1px rgba(0,0,0,0.03);
-    }
-
-    .icon-button:hover { border-color: #aeb8af; }
-
-    .stats {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(130px, 1fr));
-      gap: 12px;
-      margin-bottom: 22px;
-    }
-
-    .stat {
-      background: var(--surface);
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      padding: 14px 16px;
-      box-shadow: 0 1px 1px rgba(0,0,0,0.02);
-      min-height: 80px;
-    }
-
-    .stat span {
-      display: block;
-      color: var(--muted);
-      font-size: 12px;
-      text-transform: uppercase;
-    }
-
-    .stat strong {
-      display: block;
-      margin-top: 8px;
-      font-size: 24px;
-      line-height: 1;
-    }
-
-    .items {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-      gap: 14px;
-    }
-
-    .item {
-      display: grid;
-      grid-template-columns: 112px minmax(0, 1fr);
-      gap: 14px;
-      background: var(--surface);
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      padding: 12px;
-      min-height: 168px;
-      box-shadow: var(--shadow);
-    }
-
-    .thumb {
-      width: 112px;
-      height: 144px;
-      border-radius: 7px;
-      background: #e8ece5;
-      border: 1px solid #d1d8d0;
-      overflow: hidden;
-      display: grid;
-      place-items: center;
-      color: var(--muted);
-      font-size: 12px;
-      text-align: center;
-    }
-
-    .thumb img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-    }
-
-    .item-body {
-      min-width: 0;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .item-title {
-      margin: 0;
-      font-size: 16px;
-      line-height: 1.25;
-      font-weight: 720;
-      overflow-wrap: anywhere;
-    }
-
-    .meta, .reason, .locator {
-      margin: 0;
-      color: var(--muted);
-      font-size: 13px;
-      line-height: 1.35;
-      overflow-wrap: anywhere;
-    }
-
-    .price-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    .price {
-      font-size: 18px;
-      font-weight: 760;
-    }
-
-    .pill {
-      display: inline-flex;
-      align-items: center;
-      height: 24px;
-      border-radius: 999px;
-      padding: 0 9px;
-      font-size: 12px;
-      border: 1px solid var(--line);
-      background: #f8faf6;
-      color: var(--muted);
-      max-width: 100%;
-    }
-
-    .pill.ready { background: #e8f5ee; color: var(--green); border-color: #b8ddc9; }
-    .pill.review { background: #fff6df; color: var(--amber); border-color: #efd18b; }
-    .pill.rejected { background: #fdeeee; color: var(--red); border-color: #e5b7b7; }
-
-    .item-controls {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 6px;
-      margin-top: auto;
-    }
-
-    .item-controls button {
-      height: 32px;
-      border: 1px solid var(--line);
-      background: #fbfcf9;
-      border-radius: 7px;
-      cursor: pointer;
-      color: var(--ink);
-      font-size: 12px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .item-controls button:hover { border-color: #aeb8af; }
-
-    .item-controls .primary {
-      background: var(--green);
-      color: var(--green-ink);
-      border-color: var(--green);
-    }
-
-    .panel-title {
-      margin: 0 0 14px;
-      font-size: 14px;
-      text-transform: uppercase;
-      color: var(--muted);
-    }
-
-    .model-list {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin: 0 0 26px;
-      padding: 0;
-      list-style: none;
-    }
-
-    .model-list li {
-      border: 1px solid var(--line);
-      border-radius: 999px;
-      padding: 7px 10px;
-      background: var(--surface);
-      color: var(--muted);
-      font-size: 12px;
-      max-width: 100%;
-      overflow-wrap: anywhere;
-    }
-
-    .status-table {
-      display: grid;
-      gap: 8px;
-    }
-
-    .status-row {
-      display: flex;
-      justify-content: space-between;
-      gap: 14px;
-      border-bottom: 1px solid var(--line);
-      padding: 9px 0;
-      color: var(--muted);
-    }
-
-    .status-row strong { color: var(--ink); }
-
-    .empty {
-      border: 1px dashed #bcc7bd;
-      border-radius: 8px;
-      background: rgba(255,255,255,0.55);
-      padding: 34px;
-      color: var(--muted);
-      text-align: center;
-    }
-
-    @media (max-width: 980px) {
-      .app { grid-template-columns: 1fr; }
-      aside { border-left: 0; border-top: 1px solid var(--line); }
-      .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    }
-
-    @media (max-width: 620px) {
-      main, aside { padding: 18px; }
-      .topbar { flex-direction: column; }
-      .stats { grid-template-columns: 1fr; }
-      .items { grid-template-columns: 1fr; }
-      .item { grid-template-columns: 92px minmax(0, 1fr); }
-      .thumb { width: 92px; height: 124px; }
-      .item-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    }
-  </style>
+  <meta name="theme-color" content="#f4f6f8">
+  <title>MCPBasket</title>
+  <style>${LOCAL_VIEWER_STYLES}</style>
 </head>
-<body>
-  <div class="app">
-    <main>
-      <header class="topbar">
-        <div>
-          <h1 id="title">Agent Basket</h1>
-          <p class="intent" id="intent"></p>
-        </div>
-        <div class="actions">
-          <button class="icon-button" id="refresh" title="Refresh" aria-label="Refresh">R</button>
-        </div>
-      </header>
+<body data-initial-view="${initialView}"${initialSearchId}${initialSourceUrl}${initialSourceTitle}${initialView === "main-basket" ? ' class="is-main-basket"' : ""}>
+  <div class="app-shell">
+    <header class="app-header">
+      <a class="brand" href="/" aria-label="MCPBasket home">
+        <span class="brand-mark" aria-hidden="true">MB</span>
+        <span class="brand-copy">
+          <span class="brand-kicker">Local workspace</span>
+          <strong>MCPBasket</strong>
+        </span>
+      </a>
+      <div class="header-actions">
+        <span class="sync-status" id="sync-status" role="status">Syncing</span>
+        <button class="icon-button" id="refresh" type="button" title="Refresh basket" aria-label="Refresh basket">
+          <span aria-hidden="true">&#8635;</span>
+        </button>
+        <a class="searches-nav" id="searches-link" href="/searches" title="Open saved searches" aria-label="Open saved searches">
+          <span class="searches-nav-icon" aria-hidden="true">&#128269;</span>
+          <span class="searches-nav-count" id="searches-count">0</span>
+        </a>
+        <a class="basket-nav" id="main-basket-link" href="/basket" title="Open main basket" aria-label="Open main basket">
+          <span class="basket-nav-icon" aria-hidden="true">&#128722;</span>
+          <span class="basket-nav-count" id="main-basket-count">0</span>
+        </a>
+      </div>
+    </header>
 
-      <section class="stats" aria-label="Basket stats">
-        <div class="stat"><span>Items</span><strong id="stat-items">0</strong></div>
-        <div class="stat"><span>Ready</span><strong id="stat-ready">0</strong></div>
-        <div class="stat"><span>Missing locator</span><strong id="stat-missing">0</strong></div>
-        <div class="stat"><span>Total</span><strong id="stat-total">-</strong></div>
+    <main class="workspace">
+      <section class="basket-overview" aria-labelledby="basket-title">
+        <div class="overview-copy">
+          <p class="eyebrow">Research basket</p>
+          <h1 id="basket-title">Agent Basket</h1>
+          <p class="intent" id="intent">Preparing the local research workspace.</p>
+          <div class="context-chips" id="context-chips" aria-label="Basket context"></div>
+          <form class="refinement-form" id="refinement-form">
+            <div class="refinement-form-copy">
+              <label for="refinement-prompt">Refine this research</label>
+              <span id="refinement-status" role="status"></span>
+            </div>
+            <div class="refinement-form-controls">
+              <input id="refinement-prompt" type="text" autocomplete="off" maxlength="10000" placeholder="Add criteria or change the direction">
+              <button class="refinement-submit" id="refinement-submit" type="submit">Refine</button>
+            </div>
+          </form>
+        </div>
+
+        <dl class="summary-band" aria-label="Basket summary">
+          <div class="metric">
+            <dt>Options</dt>
+            <dd id="stat-items">0</dd>
+            <span id="stat-items-detail">No candidates yet</span>
+          </div>
+          <div class="metric">
+            <dt>Shortlisted</dt>
+            <dd id="stat-shortlisted">0</dd>
+            <span id="stat-shortlisted-detail">Awaiting review</span>
+          </div>
+          <div class="metric">
+            <dt>Approved</dt>
+            <dd id="stat-approved">0</dd>
+            <span id="stat-approved-detail">Nothing approved</span>
+          </div>
+          <div class="metric metric-total">
+            <dt>Observed total</dt>
+            <dd id="stat-total">-</dd>
+            <span id="stat-total-detail">Across priced options</span>
+          </div>
+        </dl>
       </section>
 
-      <section class="items" id="items"></section>
+      <section class="workspace-grid" id="research-view" aria-label="Basket review workspace"${researchViewHidden}>
+        <section class="candidate-region" aria-labelledby="products-heading">
+          <header class="region-header">
+            <div>
+              <p class="eyebrow">Research queue</p>
+              <h2 id="products-heading">Products</h2>
+              <p class="region-description" id="result-count">Loading candidates</p>
+            </div>
+            <div class="research-controls">
+              <div class="history-nav" aria-label="Saved search navigation">
+                <button class="icon-button" id="previous-search" type="button" title="Previous saved search" aria-label="Previous saved search">&#8592;</button>
+                <label class="search-selector" for="saved-search">
+                  <span class="sr-only">Saved search</span>
+                  <select id="saved-search"></select>
+                </label>
+                <button class="icon-button" id="next-search" type="button" title="Next saved search" aria-label="Next saved search">&#8594;</button>
+              </div>
+              <label class="search-control" for="search">
+                <span class="sr-only">Search products</span>
+                <span class="search-icon" aria-hidden="true">&#9906;</span>
+                <input id="search" type="search" autocomplete="off" placeholder="Search products">
+              </label>
+            </div>
+          </header>
+
+          <div class="list-toolbar">
+            <div class="filter-tabs" role="tablist" aria-label="Filter basket products">
+              <button class="filter-tab is-active" type="button" role="tab" aria-selected="true" data-filter="all">All <span id="filter-count-all">0</span></button>
+              <button class="filter-tab" type="button" role="tab" aria-selected="false" data-filter="research">In research <span id="filter-count-research">0</span></button>
+              <button class="filter-tab" type="button" role="tab" aria-selected="false" data-filter="shortlisted">Shortlisted <span id="filter-count-shortlisted">0</span></button>
+              <button class="filter-tab" type="button" role="tab" aria-selected="false" data-filter="approved">Approved <span id="filter-count-approved">0</span></button>
+            </div>
+            <label class="sort-control" for="sort">
+              <span>Sort</span>
+              <select id="sort">
+                <option value="recommended">Recommended</option>
+                <option value="price-low">Price: low to high</option>
+                <option value="price-high">Price: high to low</option>
+                <option value="updated">Recently updated</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="candidate-list" id="items" aria-live="polite"></div>
+        </section>
+
+        <aside class="inspector" aria-labelledby="review-heading">
+          <div id="inspector-content">
+            <p class="eyebrow">Candidate review</p>
+            <h2 id="review-heading">Select a product</h2>
+            <p class="inspector-empty">Choose an option to inspect its price, evidence, and checkout readiness.</p>
+          </div>
+        </aside>
+      </section>
+
+      <section class="searches-workspace" id="searches-view"${searchesViewHidden} aria-labelledby="searches-heading">
+        <header class="searches-header">
+          <div>
+            <p class="eyebrow">Agent research archive</p>
+            <h2 id="searches-heading">Saved searches</h2>
+            <p class="region-description" id="searches-description">Every research response is preserved with its candidate list.</p>
+          </div>
+          <a class="back-to-research" href="/">Current research</a>
+        </header>
+        <dl class="searches-summary" aria-label="Saved searches summary">
+          <div><dt>Searches</dt><dd id="searches-summary-count">0</dd></div>
+          <div><dt>Captured products</dt><dd id="searches-summary-products">0</dd></div>
+          <div><dt>Main basket</dt><dd id="searches-summary-basket">0</dd></div>
+        </dl>
+        <div class="searches-layout">
+          <section class="searches-list" id="search-page-items" aria-live="polite"></section>
+          <aside class="searches-sidebar">
+            <p class="eyebrow">Selection</p>
+            <h3>Main basket</h3>
+            <p id="searches-sidebar-copy">Selected products from any saved research stay together here.</p>
+            <a class="open-main-basket" href="/basket">Open main basket <span id="searches-sidebar-basket-count">0</span></a>
+          </aside>
+        </div>
+      </section>
+
+      <section class="source-page-workspace" id="source-page-view"${sourcePageViewHidden} aria-labelledby="source-page-title">
+        <header class="source-page-header">
+          <button class="back-to-research" type="button" data-action="go-back-source">Back</button>
+          <span class="source-page-title" id="source-page-title">Product source</span>
+        </header>
+        <div class="source-page-frame-shell">
+          <iframe id="source-page-frame" title="Product source" src="about:blank" sandbox="allow-forms allow-popups allow-scripts" referrerpolicy="no-referrer"></iframe>
+        </div>
+        <footer class="source-page-footer">
+          <span>Original verified product source</span>
+          <a class="source-link" id="source-page-external" href="#" target="_blank" rel="noreferrer">Open in browser &#8599;</a>
+        </footer>
+      </section>
+
+      <section class="main-basket-workspace" id="main-basket-view"${mainBasketViewHidden} aria-labelledby="main-basket-heading">
+        <header class="main-basket-header">
+          <div>
+            <p class="eyebrow">Persistent across research</p>
+            <h2 id="main-basket-heading">Main basket</h2>
+            <p class="region-description" id="main-basket-description">Products selected across every saved research session.</p>
+          </div>
+          <button class="back-to-research" type="button" data-action="go-back">Back</button>
+        </header>
+        <dl class="main-basket-summary" aria-label="Main basket summary">
+          <div>
+            <dt>Selected products</dt>
+            <dd id="main-basket-product-count">0</dd>
+          </div>
+          <div>
+            <dt>Research sessions</dt>
+            <dd id="main-basket-search-count">0</dd>
+          </div>
+          <div>
+            <dt>Merchants</dt>
+            <dd id="main-basket-merchant-count">0</dd>
+          </div>
+          <div>
+            <dt>Product total</dt>
+            <dd id="main-basket-total">-</dd>
+          </div>
+        </dl>
+        <div class="main-basket-layout">
+          <section class="main-basket-list" id="main-basket-items" aria-live="polite"></section>
+          <aside class="main-basket-sidebar">
+            <section class="checkout-panel" aria-labelledby="checkout-heading">
+              <p class="eyebrow">Checkout</p>
+              <h3 id="checkout-heading">Ready when you are</h3>
+              <p id="checkout-panel-detail">Select products from research to start a checkout.</p>
+              <div class="checkout-panel-total" id="checkout-panel-total">-</div>
+              <button class="checkout-button" id="desktop-checkout" type="button" data-action="checkout">Checkout with Crossmint</button>
+              <p class="checkout-placeholder">Crossmint is not connected in this local MVP. No order or payment will be created.</p>
+            </section>
+            <section class="search-history" aria-labelledby="history-heading">
+              <p class="eyebrow">Saved research</p>
+              <h3 id="history-heading">Search history</h3>
+              <div class="history-list" id="search-history"></div>
+            </section>
+          </aside>
+        </div>
+      </section>
     </main>
-
-    <aside>
-      <h2 class="panel-title">Model</h2>
-      <ul class="model-list" id="model-list"></ul>
-
-      <h2 class="panel-title">Statuses</h2>
-      <div class="status-table" id="status-table"></div>
-    </aside>
   </div>
-
-  <script>
-    window.MODEL_FIELDS = ${modelFields};
-
-    const state = { basket: null };
-
-    function text(value, fallback) {
-      return value == null || value === '' ? fallback : value;
-    }
-
-    function money(value) {
-      if (!value) return '-';
-      if (value.display) return value.display;
-      if (value.amount == null) return '-';
-      try {
-        return new Intl.NumberFormat(undefined, {
-          style: 'currency',
-          currency: value.currency || 'USD'
-        }).format(value.amount);
-      } catch {
-        return String(value.amount) + ' ' + (value.currency || '');
-      }
-    }
-
-    function statusClass(status) {
-      if (status === 'approved' || status === 'ready_for_checkout' || status === 'ordered') return 'ready';
-      if (status === 'needs_review' || status === 'shortlisted') return 'review';
-      if (status === 'rejected') return 'rejected';
-      return '';
-    }
-
-    function totalText(totals) {
-      const entries = Object.entries(totals || {});
-      if (entries.length === 0) return '-';
-      return entries.map(function(entry) {
-        return money({ amount: entry[1], currency: entry[0] });
-      }).join(' + ');
-    }
-
-    function renderModel() {
-      const list = document.getElementById('model-list');
-      list.innerHTML = window.MODEL_FIELDS.map(function(field) {
-        return '<li>' + field.replace(/^product\\./, '') + '</li>';
-      }).join('');
-    }
-
-    function renderStatuses(basket) {
-      const table = document.getElementById('status-table');
-      const statuses = basket.statuses || {};
-      const entries = Object.keys(statuses).sort().map(function(key) {
-        return '<div class="status-row"><span>' + key + '</span><strong>' + statuses[key] + '</strong></div>';
-      });
-      table.innerHTML = entries.length === 0 ? '<div class="status-row"><span>empty</span><strong>0</strong></div>' : entries.join('');
-    }
-
-    function renderItem(item) {
-      const merchant = item.merchant && (item.merchant.name || item.merchant.domain) ? (item.merchant.name || item.merchant.domain) : 'Unknown merchant';
-      const readiness = item.checkout && item.checkout.readiness ? item.checkout.readiness : 'unknown';
-      const image = item.image ? '<img src="' + item.image + '" alt="">' : 'No image';
-      const sourceLink = item.url ? '<a href="' + item.url + '" target="_blank" rel="noreferrer">' + merchant + '</a>' : merchant;
-      return [
-        '<article class="item" data-id="' + item.id + '">',
-          '<div class="thumb">' + image + '</div>',
-          '<div class="item-body">',
-            '<h3 class="item-title">' + text(item.title, 'Untitled product') + '</h3>',
-            '<p class="meta">' + sourceLink + ' · Qty ' + item.quantity + '</p>',
-            '<div class="price-row">',
-              '<span class="price">' + money(item.price) + '</span>',
-              '<span class="pill ' + statusClass(item.status) + '">' + item.status + '</span>',
-              '<span class="pill">' + readiness + '</span>',
-            '</div>',
-            '<p class="reason">' + text(item.reason, 'No rationale captured yet.') + '</p>',
-            '<p class="locator">' + text(item.locator, 'No checkout locator') + '</p>',
-            '<div class="item-controls">',
-              '<button data-action="status" data-status="candidate">Candidate</button>',
-              '<button data-action="status" data-status="shortlisted">Shortlist</button>',
-              '<button class="primary" data-action="status" data-status="approved">Approve</button>',
-              '<button data-action="status" data-status="rejected">Reject</button>',
-            '</div>',
-          '</div>',
-        '</article>'
-      ].join('');
-    }
-
-    function render(basket) {
-      state.basket = basket;
-      const context = basket.context || {};
-      document.getElementById('title').textContent = context.title || 'Agent Basket';
-      document.getElementById('intent').textContent = context.intent || 'Neutral pre-checkout workspace for purchase candidates.';
-      document.getElementById('stat-items').textContent = basket.itemCount || 0;
-      document.getElementById('stat-ready').textContent = basket.checkoutReady || 0;
-      document.getElementById('stat-missing').textContent = basket.missingCheckoutLocator || 0;
-      document.getElementById('stat-total').textContent = totalText(basket.totalsByCurrency);
-      const items = document.getElementById('items');
-      items.innerHTML = basket.items && basket.items.length
-        ? basket.items.map(renderItem).join('')
-        : '<div class="empty">No products in the basket.</div>';
-      renderStatuses(basket);
-    }
-
-    async function loadBasket() {
-      const response = await fetch('/api/basket', { cache: 'no-store' });
-      if (!response.ok) throw new Error('Failed to load basket');
-      render(await response.json());
-    }
-
-    async function updateStatus(id, status) {
-      const response = await fetch('/api/items/' + encodeURIComponent(id) + '/status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: status })
-      });
-      if (!response.ok) throw new Error('Failed to update status');
-      await loadBasket();
-    }
-
-    document.addEventListener('click', function(event) {
-      const button = event.target.closest('button');
-      if (!button) return;
-      if (button.id === 'refresh') {
-        loadBasket();
-        return;
-      }
-      const action = button.getAttribute('data-action');
-      if (action === 'status') {
-        const item = button.closest('.item');
-        updateStatus(item.getAttribute('data-id'), button.getAttribute('data-status'));
-      }
-    });
-
-    renderModel();
-    loadBasket();
-    setInterval(loadBasket, 5000);
-  </script>
+  <div class="mobile-checkout-bar" id="mobile-checkout" hidden>
+    <div>
+      <span id="mobile-checkout-count">0 products</span>
+      <strong id="mobile-checkout-total">-</strong>
+    </div>
+    <button class="checkout-button" type="button" data-action="checkout">Checkout</button>
+  </div>
+  <div class="checkout-modal" id="checkout-modal" hidden role="dialog" aria-modal="true" aria-labelledby="checkout-modal-title">
+    <div class="checkout-modal-card">
+      <button class="modal-close" type="button" data-action="close-checkout" aria-label="Close checkout placeholder">&#215;</button>
+      <p class="eyebrow">Crossmint checkout</p>
+      <h2 id="checkout-modal-title">Checkout is not connected yet</h2>
+      <p id="checkout-modal-copy">Your selected products remain in the local main basket. This placeholder will open Crossmint once the checkout integration and validation flow are configured.</p>
+      <div class="checkout-modal-summary" id="checkout-modal-summary"></div>
+      <button class="secondary-button" type="button" data-action="close-checkout">Back to main basket</button>
+    </div>
+  </div>
+  <div class="source-modal" id="source-modal" hidden role="dialog" aria-modal="true" aria-labelledby="source-modal-title">
+    <div class="source-modal-card">
+      <header class="source-modal-header">
+        <div>
+          <p class="eyebrow">Product source</p>
+          <h2 id="source-modal-title">Product page</h2>
+        </div>
+        <button class="modal-close" type="button" data-action="close-source" aria-label="Close product source">&#215;</button>
+      </header>
+      <div class="source-frame-shell">
+        <iframe id="source-modal-frame" title="Product source" src="about:blank" sandbox="allow-forms allow-popups allow-scripts" referrerpolicy="no-referrer"></iframe>
+      </div>
+      <footer class="source-modal-footer">
+        <span>Some stores block embedded product pages.</span>
+        <a class="source-link" id="source-modal-external" href="#" target="_blank" rel="noreferrer">Open in browser &#8599;</a>
+      </footer>
+    </div>
+  </div>
+  <div class="product-modal" id="product-modal" hidden role="dialog" aria-modal="true" aria-labelledby="product-modal-title">
+    <div class="product-modal-card">
+      <header class="product-modal-header">
+        <p class="eyebrow">Product detail</p>
+        <button class="modal-close" type="button" data-action="close-product" aria-label="Close product detail">&#215;</button>
+      </header>
+      <div class="product-modal-content" id="product-modal-content"></div>
+    </div>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script>${LOCAL_VIEWER_CLIENT}</script>
 </body>
 </html>`;
 }
