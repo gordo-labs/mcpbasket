@@ -7,7 +7,7 @@ It never creates an order.
 ## What An Agent Gets
 
 - One saved search per research response, including its creation time and complete candidate snapshot.
-- A search-specific refinement input that preserves the original snapshot and creates a linked new research response.
+- Persisted search-refinement requests that preserve the original snapshot and create a linked new research response.
 - A verified product source and optional product image when the agent can observe them.
 - A persistent Main basket that can collect selected products from any saved search.
 - A local viewer with Research (`/`), saved Searches (`/searches`), Main basket (`/basket`), and verified-source viewing.
@@ -55,6 +55,7 @@ Copy `.env.example` to `.env` and set an absolute path:
 ```bash
 cp .env.example .env
 # Edit .env to set MCPBASKET_STORE_PATH to an absolute path on your machine.
+# Do not use $HOME or ~ here; .env values are not shell-expanded.
 ```
 
 The `.env` file is optional. When the MCP server is launched by an agent host (Hermes, Claude, etc.), the host already injects `MCPBASKET_STORE_PATH` via its MCP server configuration — the `.env` is only a convenience for running the viewer directly during development.
@@ -102,6 +103,36 @@ Use the built entrypoint and repeat the same environment values, especially `MCP
 
 The JSON is a standard MCP example. Replace both absolute paths. For Hermes, use the ready-to-copy YAML in [docs/HERMES.md](docs/HERMES.md).
 
+### OpenClaw installation
+
+OpenClaw stores outbound MCP servers in its own registry and installs local skills into the active agent workspace. Build MCPBasket first, then register the built stdio server with absolute paths:
+
+```bash
+npm run build
+
+openclaw mcp set mcpbasket '{
+  "command": "node",
+  "args": ["/absolute/path/to/mcpbasket/packages/mcp-basket/build/index.js"],
+  "env": {
+    "MCPBASKET_STORE_PATH": "/absolute/path/to/basket.json",
+    "MCPBASKET_PORT": "4377",
+    "MCPBASKET_BIND_HOST": "127.0.0.1",
+    "MCPBASKET_VIEWER_URL": "http://127.0.0.1:4377"
+  }
+}'
+```
+
+Install the local skill for the active OpenClaw agent, then verify both registrations:
+
+```bash
+openclaw skills install "$(pwd)/skills/mcpbasket" --as mcpbasket
+openclaw mcp list
+openclaw skills info mcpbasket
+openclaw skills check
+```
+
+Run the skill command from the intended agent workspace, or add OpenClaw's `--agent <id>` option to target a specific agent. The viewer remains a separate local process: configure the same absolute `MCPBASKET_STORE_PATH` in `.env`, then run `npm run viewer`. See the [OpenClaw MCP reference](https://docs.openclaw.ai/cli/mcp) and [skills reference](https://docs.openclaw.ai/cli/skills) for registry and workspace behavior.
+
 ### 5. Install the agent skill
 
 Install or symlink the complete [`skills/mcpbasket`](skills/mcpbasket) directory into the host agent's skill directory, then restart the agent. For a local skill directory, the command is typically:
@@ -129,7 +160,7 @@ Use the MCP host's connection test, then ask the agent to research a product. Co
 - A search appears in `/searches` with its timestamp and candidate count.
 - A verified product source opens in the viewer.
 - Adding a product appears in `/basket` and survives a viewer restart.
-- Entering refinement criteria on a saved search creates a queued or dispatched refinement with the original snapshot retained.
+- A compatible agent can process a queued refinement request without altering the original snapshot.
 
 The viewer is loopback-only by default. It is an MVP inspection surface, not a public sharing service. A private-network setup can bind to a private interface and set a matching `MCPBASKET_VIEWER_URL`; authentication, public sharing, and payments remain out of scope.
 

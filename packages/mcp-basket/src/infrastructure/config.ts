@@ -42,9 +42,11 @@ export function resolveBasketRuntimeConfig(
   environment: NodeJS.ProcessEnv = process.env,
 ): BasketRuntimeConfig {
   const port = parsePort(environment.MCPBASKET_PORT || environment.PORT);
-  const storePath = path.resolve(
-    environment.MCPBASKET_STORE_PATH || path.join(process.cwd(), DEFAULT_BASKET_DIR, DEFAULT_BASKET_FILE),
-  );
+  const configuredStorePath = environment.MCPBASKET_STORE_PATH?.trim();
+  if (configuredStorePath != null && configuredStorePath !== "" && !path.isAbsolute(configuredStorePath)) {
+    throw new Error("MCPBASKET_STORE_PATH must be an absolute path.");
+  }
+  const storePath = configuredStorePath || path.resolve(process.cwd(), DEFAULT_BASKET_DIR, DEFAULT_BASKET_FILE);
 
   return {
     storePath,

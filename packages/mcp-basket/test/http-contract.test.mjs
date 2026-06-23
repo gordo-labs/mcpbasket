@@ -26,6 +26,7 @@ test("viewer HTTP API validates input and persists a candidate", async () => {
       assert.match(researchPage, /data-initial-view="research"/);
       assert.match(researchPage, /id="source-modal-frame"/);
       assert.match(researchPage, /data-source-modal="true"/);
+      assert.doesNotMatch(researchPage, /source-page-frame/);
 
       const mainBasketPageResponse = await fetch(`${baseUrl}/basket`);
       assert.equal(mainBasketPageResponse.status, 200);
@@ -36,12 +37,7 @@ test("viewer HTTP API validates input and persists a candidate", async () => {
       assert.match(mainBasketPage, /id="main-basket-view" aria-labelledby/);
 
       const sourcePageResponse = await fetch(`${baseUrl}/source?url=https%3A%2F%2Fexample.com%2Fproduct&title=Example%20product`);
-      assert.equal(sourcePageResponse.status, 200);
-      const sourcePage = await sourcePageResponse.text();
-      assert.match(sourcePage, /data-initial-view="source-page"/);
-      assert.ok(sourcePage.includes('data-initial-source-url="https://example.com/product"'));
-      assert.match(sourcePage, /data-initial-source-title="Example product"/);
-      assert.match(sourcePage, /id="source-page-view" aria-labelledby/);
+      assert.equal(sourcePageResponse.status, 404);
 
       const searchesPageResponse = await fetch(`${baseUrl}/searches`);
       assert.equal(searchesPageResponse.status, 200);

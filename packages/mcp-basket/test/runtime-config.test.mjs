@@ -18,3 +18,10 @@ test("viewer URL can differ from the interface used by the local server", () => 
     "http://sergios-mac-studio.tailc3a82a.ts.net:4377/api/basket",
   );
 });
+
+test("configured basket stores must use an absolute path", () => {
+  assert.throws(
+    () => resolveBasketRuntimeConfig({ MCPBASKET_STORE_PATH: "$HOME/.local/share/mcpbasket/basket.json" }),
+    /MCPBASKET_STORE_PATH must be an absolute path/,
+  );
+});

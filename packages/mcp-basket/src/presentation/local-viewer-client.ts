@@ -4,11 +4,7 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
       basket: null,
       selectedId: null,
       selectedSearchId: document.body.getAttribute("data-initial-search-id"),
-      sourceUrl: document.body.getAttribute("data-initial-source-url"),
-      sourceTitle: document.body.getAttribute("data-initial-source-title"),
-      view: document.body.getAttribute("data-initial-view") === "source-page"
-        ? "source-page"
-        : document.body.getAttribute("data-initial-view") === "main-basket"
+      view: document.body.getAttribute("data-initial-view") === "main-basket"
         ? "main-basket"
         : document.body.getAttribute("data-initial-view") === "searches" ? "searches" : "research",
       filter: "all",
@@ -16,7 +12,8 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
       sort: "recommended",
       toastTimer: null,
       sourceOpener: null,
-      productOpener: null
+      productOpener: null,
+      sourceFallbackTimer: null
     };
 
     var STATUS_LABELS = {
@@ -292,10 +289,9 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
     }
 
     function setWorkspaceView(view) {
-      state.view = view === "main-basket" || view === "searches" || view === "source-page" ? view : "research";
+      state.view = view === "main-basket" || view === "searches" ? view : "research";
       element("research-view").hidden = state.view !== "research";
       element("searches-view").hidden = state.view !== "searches";
-      element("source-page-view").hidden = state.view !== "source-page";
       element("main-basket-view").hidden = state.view !== "main-basket";
       element("mobile-checkout").hidden = state.view !== "main-basket";
       var basketLink = element("main-basket-link");
@@ -308,11 +304,9 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
       else searchesLink.removeAttribute("aria-current");
       document.body.classList.toggle("is-main-basket", state.view === "main-basket");
       document.body.classList.toggle("is-searches", state.view === "searches");
-      document.body.classList.toggle("is-source-page", state.view === "source-page");
       document.title = state.view === "main-basket"
         ? "Main basket | MCPBasket"
-        : state.view === "searches" ? "Saved searches | MCPBasket"
-          : state.view === "source-page" ? "Product source | MCPBasket" : "MCPBasket";
+        : state.view === "searches" ? "Saved searches | MCPBasket" : "MCPBasket";
     }
 
     function updateTabs(items) {
@@ -629,17 +623,6 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
       element("inspector-content").innerHTML = productDetailMarkup(item, searchId, isActiveSearch, "review-heading", false);
     }
 
-    function renderSourcePage() {
-      var source = httpUrl(state.sourceUrl);
-      element("source-page-title").textContent = state.sourceTitle || "Product source";
-      element("source-page-frame").setAttribute("src", source || "about:blank");
-      element("source-page-external").setAttribute("href", source || "#");
-      element("source-page-external").hidden = !source;
-      if (!source) {
-        element("source-page-title").textContent = "Source unavailable";
-      }
-    }
-
     function render(basket) {
       state.basket = basket;
       var search = selectedSearch();
@@ -668,7 +651,6 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
       renderSearchNavigator();
       renderSearchesWorkspace();
       renderMainBasketWorkspace();
-      renderSourcePage();
       setWorkspaceView(state.view);
 
       var filtered = sortedItems(items.filter(matchesFilter).filter(matchesSearch));
@@ -812,23 +794,63 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
       state.productOpener = null;
     }
 
+    function clearSourceFallbackTimer() {
+      if (state.sourceFallbackTimer) window.clearTimeout(state.sourceFallbackTimer);
+      state.sourceFallbackTimer = null;
+    }
+
+    function openSourceInBrowser(url) {
+      window.open(url, "_blank", "noopener,noreferrer");
+    }
+
+    function fallbackToSourcePage(url) {
+      closeSourceModal();
+      window.location.assign(url);
+    }
+
+    function sourceFrameIsBlank(frame) {
+      try {
+        return frame.contentWindow && frame.contentWindow.location.href === "about:blank";
+      } catch (_) {
+        return false;
+      }
+    }
+
     function openSourceModal(url, title, opener) {
       if (!url) return;
       var modal = element("source-modal");
+      var frame = element("source-modal-frame");
+      clearSourceFallbackTimer();
       state.sourceOpener = opener || null;
       element("source-modal-title").textContent = title || "Product page";
-      element("source-modal-frame").setAttribute("src", url);
+      frame.onload = function () {
+        clearSourceFallbackTimer();
+        window.setTimeout(function () {
+          if (!modal.hidden && frame.getAttribute("src") === url && sourceFrameIsBlank(frame)) {
+            fallbackToSourcePage(url);
+          }
+        }, 0);
+      };
+      frame.onerror = function () { fallbackToSourcePage(url); };
+      frame.setAttribute("src", url);
       element("source-modal-external").setAttribute("href", url);
       modal.hidden = false;
       syncModalLock();
+      state.sourceFallbackTimer = window.setTimeout(function () {
+        if (!modal.hidden && frame.getAttribute("src") === url) fallbackToSourcePage(url);
+      }, 12_000);
       window.setTimeout(function () { modal.querySelector("[data-action='close-source']").focus(); }, 0);
     }
 
     function closeSourceModal() {
       var modal = element("source-modal");
       if (modal.hidden) return;
+      clearSourceFallbackTimer();
       modal.hidden = true;
-      element("source-modal-frame").setAttribute("src", "about:blank");
+      var frame = element("source-modal-frame");
+      frame.onload = null;
+      frame.onerror = null;
+      frame.setAttribute("src", "about:blank");
       element("source-modal-external").setAttribute("href", "#");
       syncModalLock();
       if (state.sourceOpener && typeof state.sourceOpener.focus === "function") state.sourceOpener.focus();
@@ -856,13 +878,6 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
       window.location.assign("/?search=" + encodeURIComponent(searchId));
     }
 
-    function openSourcePage(url, title) {
-      var query = new URLSearchParams();
-      query.set("url", url);
-      if (title) query.set("title", title);
-      window.location.assign("/source?" + query.toString());
-    }
-
     function returnToPreviousView(fallbackPath) {
       try {
         var referrer = document.referrer ? new URL(document.referrer) : null;
@@ -883,7 +898,7 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
       if (productModalEnabled()) {
         openSourceModal(sourceLink.href, sourceLink.getAttribute("data-source-title"), sourceLink);
       } else {
-        openSourcePage(sourceLink.href, sourceLink.getAttribute("data-source-title"));
+        openSourceInBrowser(sourceLink.href);
       }
     });
 
@@ -939,8 +954,6 @@ export const LOCAL_VIEWER_CLIENT = String.raw`
         closeProductModal();
       } else if (action === "go-back") {
         returnToPreviousView();
-      } else if (action === "go-back-source") {
-        returnToPreviousView("/");
       }
     });
 

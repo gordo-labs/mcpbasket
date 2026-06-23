@@ -20,7 +20,7 @@ Copy `.env.example` to `.env` and set the path:
 ```bash
 cp .env.example .env
 # Edit MCPBASKET_STORE_PATH to an absolute path, e.g.:
-# MCPBASKET_STORE_PATH=$HOME/.local/share/mcpbasket/basket.json
+# MCPBASKET_STORE_PATH=/absolute/path/to/mcpbasket/basket.json
 ```
 
 The `.env` is a convenience for running the viewer directly. Hermes injects `MCPBASKET_STORE_PATH` via its MCP server config below.
